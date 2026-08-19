@@ -1,4 +1,4 @@
-# run - Global Script Manager
+# run - Script Manager
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -8,7 +8,7 @@
 go install github.com/pt-main/run@latest
 ```
 
-**run** is a global script manager that lets you add, remove, and run scripts in different languages with a single command. Scripts are stored in `~/run/` and are accessible from any folder.
+**run** is a script manager that lets you add, remove, and run scripts in different languages with a single command. Scripts are stored in `~/run/` and are accessible from any folder.
 
 ---
 
