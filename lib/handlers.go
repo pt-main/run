@@ -127,14 +127,7 @@ func RunScript(cfg *shared.Config, name string, rArgs []string) error {
 	if err != nil {
 		return err
 	}
-	args := []string{}
-	if len(rArgs) > 1 {
-		args, err = ProcessShell(rArgs[1])
-		if err != nil {
-			return err
-		}
-	}
-	if err := NewLuaState(args).DoString(file); err != nil {
+	if err := NewLuaState(rArgs[1:]).DoString(file); err != nil {
 		return err
 	}
 	return nil
@@ -145,6 +138,7 @@ func RunHandler(p *tap.Parser, s []string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println(p.RawArgs)
 	if tags_, ok := p.Flags["tagged"]; ok {
 		tags := strings.Split(tags_, ";")
 		for _, script := range cfg.InnerArrV["scripts"] {
