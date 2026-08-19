@@ -54,5 +54,33 @@ func NewLuaState(args []string) *lua.LState {
 		return 1
 	}))
 
+	L.SetGlobal("run_script", L.NewFunction(func(L *lua.LState) int {
+		name := L.CheckString(1)
+		var scriptArgs []string
+		top := L.GetTop()
+		for i := 2; i <= top; i++ {
+			arg := L.Get(i)
+			if str, ok := arg.(lua.LString); ok {
+				scriptArgs = append(scriptArgs, string(str))
+			} else {
+				scriptArgs = append(scriptArgs, L.ToStringMeta(arg).String())
+			}
+		}
+
+		cfg, err := GetCfg()
+		if err != nil {
+			L.RaiseError("failed to load config: %v", err)
+			return 0
+		}
+
+		rArgs := append([]string{name}, scriptArgs...)
+
+		if err := RunScript(cfg, name, rArgs); err != nil {
+			L.RaiseError("failed to run script %q: %v", name, err)
+			return 0
+		}
+		return 0
+	}))
+
 	return L
 }

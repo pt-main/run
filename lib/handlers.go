@@ -36,6 +36,11 @@ func AddHandler(p *tap.Parser, s []string) error {
 		}
 	}
 	conf.InnerArrV["scripts"] = newScripts
+	script, err := utils.OpenF(s[0])
+	if err != nil {
+		return err
+	}
+	addScript := true
 	switch ext {
 	case ".py":
 		runScript = PythonRunScriptTemplate(s[0])
@@ -44,17 +49,14 @@ func AddHandler(p *tap.Parser, s []string) error {
 	case ".bat":
 		runScript = BatRunScriptTemplate(s[1])
 	case ".lua":
-		runScript = LuaRunScriptTemplate(s[1])
+		runScript = script
+		addScript = false
 	default:
 		return fmt.Errorf("Unsupportable file extension: %v", ext)
 	}
 	docs := ""
 	if len(s) > 2 {
 		docs = s[2]
-	}
-	script, err := utils.OpenF(s[0])
-	if err != nil {
-		return err
 	}
 	conf.InnerArrV["scripts"] = append(conf.InnerArrV["scripts"], NewScriptConfig(s[1], s[1], docs, script, ext, nil))
 	if err := NewRunScript(s[1], runScript); err != nil {
@@ -63,8 +65,10 @@ func AddHandler(p *tap.Parser, s []string) error {
 	if err := UpdateConfig(conf); err != nil {
 		return err
 	}
-	if err := NewScript(file, script); err != nil {
-		return err
+	if addScript {
+		if err := NewScript(file, script); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -161,7 +165,7 @@ func RunHandler(p *tap.Parser, s []string) error {
 	}
 }
 
-func TagHahdler(p *tap.Parser, s []string) error {
+func RmTagHahdler(p *tap.Parser, s []string) error {
 	cfg, err := GetCfg()
 	if err != nil {
 		return err
@@ -184,7 +188,7 @@ func TagHahdler(p *tap.Parser, s []string) error {
 	return UpdateConfig(cfg)
 }
 
-func RmTagHahdler(p *tap.Parser, s []string) error {
+func TagHahdler(p *tap.Parser, s []string) error {
 	cfg, err := GetCfg()
 	if err != nil {
 		return err
