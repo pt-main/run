@@ -1,4 +1,4 @@
-# run - глобальный менеджер скриптов
+# run - Global Script Manager
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -8,31 +8,31 @@
 go install github.com/pt-main/run@latest
 ```
 
-**run** - это глобальный менеджер скриптов, который позволяет добавлять, удалять и запускать скрипты на разных языках одной командой. Скрипты хранятся в `~/run/` и доступны из любой папки.
+**run** is a global script manager that lets you add, remove, and run scripts in different languages with a single command. Scripts are stored in `~/run/` and are accessible from any folder.
 
 ---
 
-## Зачем run?
+## Why run?
 
-| Проблема | run решает |
-|----------|------------|
-| **Скрипты разбросаны по проектам** | Глобальное хранилище `~/run/` |
-| **Нужно помнить пути** | Одна команда: `run r myscript` |
-| **Разные языки** | Поддержка Python, Bash, Batch, Lua - и легко расширяется |
-| **Группировка** | Теги для выборочного запуска (`--tagged`) |
-| **Проектные скрипты** | Локальный режим с `.run/` в текущей папке |
-| **Безопасность** | Конфиг на TYCL со строгим контрактом |
-| **Компактность** | Маленький бинарник при полной независимости от платформы |
+| Problem | run solves |
+|---------|------------|
+| **Scripts scattered across projects** | Global storage in `~/run/` |
+| **Need to remember paths** | One command: `run r myscript` |
+| **Different languages** | Supports Python, Bash, Batch, Lua — and easily extensible |
+| **Grouping** | Tags for selective execution (`--tagged`) |
+| **Project‑specific scripts** | Local mode with `.run/` in the current folder |
+| **Safety** | Configuration in TYCL with a strict contract |
+| **Compactness** | Small binary, fully platform‑independent |
 
-run даёт **глобальность, простоту и контроль** без лишней сложности.
+run gives you **globality, simplicity, and control** without unnecessary complexity.
 
 ---
 
-## Установка
+## Installation
 
-### Как бинарник
+### As a binary
 
-Скачайте [релиз](https://github.com/pt-main/run/releases) для вашей ОС/архитектуры и положите в `PATH`:
+Download the [release](https://github.com/pt-main/run/releases) for your OS/architecture and place it in your `PATH`:
 
 ```bash
 # Linux/macOS
@@ -40,113 +40,112 @@ chmod +x run-linux-amd64
 sudo mv run-linux-amd64 /usr/local/bin/run
 
 # Windows
-# Просто положите run-windows-amd64.exe в папку, которая есть в PATH
+# Just place run-windows-amd64.exe in a folder that is in your PATH
 ```
 
-### Через `go install`
+### Via `go install`
 
 ```bash
 go install github.com/pt-main/run@latest
 ```
 
-**При первом запуске** run создаст структуру в `~/run/`:
-- `config.tycl` - конфиг (TYCL) со списком скриптов.
-- `scripts/` - Lua-обёртки для запуска.
-- `base/` - оригинальные файлы скриптов.
+**On first run**, run will create the following structure in `~/run/`:
+- `config.tycl` – configuration (TYCL) with the script list.
+- `scripts/` – Lua wrappers for running scripts.
+- `base/` – original script files.
 
 ---
 
-## Синтаксис
+## Syntax
 
 ```bash
 run [--<lm/localmode>] <cmd> <args...>
 ```
 
-### Команды
+### Commands
 
-| Команда | Описание | Пример |
-|---------|----------|--------|
-| `add <path> <name> [docs]` | Добавить скрипт (поддерживает `.py`, `.sh`, `.bat`, `.lua`) | `run add script.py mypy` |
-| `remove <name>` | Удалить скрипт | `run remove mypy` |
-| `list` | Показать список скриптов | `run list` |
-| `r <name> [args...]` | Запустить скрипт | `run r mypy arg1 arg2` |
-| `<name> [args...]` | Запустить скрипт (если имя не совпадает с командой) | `run mypy arg1` |
-| `tag <name> <tags...>` | Добавить теги | `run tag mypy deploy prod` |
-| `rm-tag <name> <tags...>` | Удалить теги | `run rm-tag mypy prod` |
-| `localmode [true/false]` | Включить/выключить локальный режим, показать текущее состояние запуска скриптов | `run localmode true` |
-| `--tagged="tag1;tag2"` | Запустить скрипты с любым из тегов | `run --tagged="deploy;test"` |
-| `version` | Показать версию | `run version` |
+| Command | Description | Example |
+|---------|-------------|---------|
+| `add <path> <name> [docs]` | Add a script (supports `.py`, `.sh`, `.bat`, `.lua`) | `run add script.py mypy` |
+| `remove <name>` | Remove a script | `run remove mypy` |
+| `list` | Show the list of scripts | `run list` |
+| `r <name> [args...]` | Run a script | `run r mypy arg1 arg2` |
+| `<name> [args...]` | Run a script (if the name does not conflict with a run command) | `run mypy arg1` |
+| `tag <name> <tags...>` | Add tags | `run tag mypy deploy prod` |
+| `rm-tag <name> <tags...>` | Remove tags | `run rm-tag mypy prod` |
+| `localmode [true/false]` | Enable/disable local mode, show current state | `run localmode true` |
+| `--tagged="tag1;tag2"` | Run scripts with any of the given tags | `run --tagged="deploy;test"` |
+| `version` | Show version | `run version` |
 
-### Флаги
+### Flags
 
-- `--force` при `add` - заменяет существующий скрипт с таким же именем.
-- `--tagged="tag1;tag2"` при `r` - запуск по тегам.
-- `--ll / --localmode` сразу после `run` - запуск в локальном режиме, после завершения востанавливает установленнй с помощью `run localmode` режим.
+- `--force` with `add` – replaces an existing script with the same name.
+- `--tagged="tag1;tag2"` with `r` – run by tags.
+- `--ll` / `--localmode` immediately after `run` – run in local mode; after completion, restores the mode previously set by `run localmode`.
 
 ---
 
-## Локальный режим
+## Local mode
 
-По умолчанию run работает глобально (конфиг в `~/run/`).  
-Включите локальный режим - и run будет использовать `.run/` в текущей папке:
+By default, run works globally (configuration in `~/run/`).  
+Enable local mode and run will use `.run/` in the current folder:
 
 ```bash
-run localmode true  # включить
-run localmode false # выключить
-run localmode       # fasle - выводит состояние
+run localmode true  # enable
+run localmode false # disable
+run localmode       # shows current state (false / true)
 ```
 
-Это удобно для проектов: скрипты хранятся в репозитории и не мешают глобальному конфигу.
+This is convenient for projects: scripts are stored in the repository and do not interfere with the global configuration.
 
 ---
 
-## Поддержка языков
+## Language support
 
-run автоматически генерирует **Lua-обёртки**, которые вызывают оригинальные скрипты с переданными аргументами.
+run automatically generates **Lua wrappers** that invoke the original scripts with the passed arguments.
 
-| Расширение | Язык | Примечание |
-|------------|------|------------|
-| `.py` | Python | Ищет `python3`, затем `python` |
-| `.sh` | Bash | Выполняет через `bash` |
-| `.bat` | Batch (Windows) | Выполняет через `cmd /c` |
-| `.lua` | Lua | Выполняется напрямую (без обёртки) |
+| Extension | Language | Note |
+|-----------|----------|------|
+| `.py` | Python | Looks for `python3`, then `python` |
+| `.sh` | Bash | Executes via `bash` |
+| `.bat` | Batch (Windows) | Executes via `cmd /c` |
+| `.lua` | Lua | Executed directly (no wrapper) |
 
-Добавить новый язык просто - достаточно дописать шаблон в `templates.go`. 
+Adding a new language is easy – just extend the template in `templates.go`.
 
 ---
 
-## Структура проекта
+## Project structure
 
 ```
 ~/run/
-├── config.tycl          # Конфиг на TYCL (строгий контракт)
-├── scripts/             # Lua-обёртки для запуска
+├── config.tycl          # Configuration in TYCL (strict contract)
+├── scripts/             # Lua wrappers for execution
 │   └── myscript.lua
-└── base/                # Оригинальные скрипты
+└── base/                # Original scripts
     └── myscript.py
 ```
 
+### TYCL configuration
 
-### TYCL конфиг
+Script configuration is built on [Tycl](https://github.com/pt-main/tycl) – a typed language with the concept of contracts (fixed configuration formats).
 
-Конфигурация скриптов построена на [Tycl](https://github.com/pt-main/tycl) - типизированном языке с концепйией контрактов (закрепленных форматов конфига). 
-
-Контракт конфига - 
+The configuration contract:
 
 ```tycl
 strict {
     scripts: objects = strict {
-        name: string,        // Имя скрипта (команда)
-        script: string,      // Имя файла обёртки (совпадает с названием lua скрипта внутри run/scripts, без расширения)
-        description: string, // Описание
-        tags: strings,       // Теги
-        source: string,      // Исходник оригинального скрипта
-        ext: string,         // Расширение (.py, .sh, .bat, .lua)
+        name: string,        // Script name (command)
+        script: string,      // Wrapper file name (matches the Lua script name inside run/scripts, without extension)
+        description: string, // Description
+        tags: strings,       // Tags
+        source: string,      // Original script source path
+        ext: string,         // Extension (.py, .sh, .bat, .lua)
     },
 }
 ```
 
-Конфиг заполняется сам, с помощью `run` cli, после первого запуска выглядит так - 
+The configuration is populated automatically via the `run` CLI. After the first run it looks like this:
 
 ```tycl
 {
@@ -165,20 +164,20 @@ strict {
 
 ---
 
-## Встроенный Lua
+## Built‑in Lua
 
-Каждая обёртка - это Lua-скрипт, который предоставляет:
+Each wrapper is a Lua script that provides:
 
-- `script_path(name)` - путь к оригинальному скрипту.
-- `get_arg(idx)` - получить аргумент по индексу.
-- `get_args()` - таблица всех аргументов.
-- `run_script(name, ...)` - запустить другой скрипт из обёртки.
+- `script_path(name)` – path to the original script.
+- `get_arg(idx)` – get an argument by index.
+- `get_args()` – table of all arguments.
+- `run_script(name, ...)` – run another script from the wrapper.
 
 ---
 
-## Примеры
+## Examples
 
-### Добавление скрипта
+### Adding a script
 
 ```bash
 run add ~/projects/tools/deploy.py deploy "Deploy to production"
@@ -189,44 +188,44 @@ run list
 # ╰───────
 ```
 
-### Запуск
+### Running
 
 ```bash
 run r deploy --env=prod
-# или
-run deploy --env=prod # когда имя скрипта не конфликтует с командами run
+# or
+run deploy --env=prod   # when the script name does not conflict with run commands
 ```
 
-### Теги
+### Tags
 
 ```bash
 run tag deploy prod utils
-run r --tagged="prod"   # запустит все скрипты с тегом prod
+run r --tagged="prod"   # runs all scripts with the tag prod
 ```
 
-### Локальный режим
+### Local mode
 
 ```bash
 cd ~/myproject
 run localmode true
 run add script.py build
-# теперь скрипт сохранится в .run/
+# now the script will be saved in .run/
 ```
 
-или 
+or
 
 ```bash
 run --localmode add script.py build
 ```
 
-**Важно**: флаг `--localmode` для корректной должен быть сразу после `run`.
+**Important**: the `--localmode` flag must appear immediately after `run` to work correctly.
 
 ---
 
-## Лицензия
+## License
 
-Apache 2.0 - подробности в [LICENSE](LICENSE).
+Apache 2.0 – see [LICENSE](LICENSE) for details.
 
 ---
 
-By Pt, 2026 - написано с использованием tap, tycl и lc.
+By Pt, 2026 – built with tap, tycl, and lc.
