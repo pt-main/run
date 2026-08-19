@@ -1,0 +1,10 @@
+{
+  "output_dir": "./build",
+  "platforms": "all",
+  "version": "1.0.0",
+  "cgo_enabled": 0,
+  "tags": "netgo,osusergo",
+  "go_build_args": ["-trimpath", "-buildvcs=false"],
+  "ldflags": "-s -w",
+  "verbose": false
+}

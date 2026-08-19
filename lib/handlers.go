@@ -138,7 +138,6 @@ func RunHandler(p *tap.Parser, s []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(p.RawArgs)
 	if tags_, ok := p.Flags["tagged"]; ok {
 		tags := strings.Split(tags_, ";")
 		for _, script := range cfg.InnerArrV["scripts"] {
