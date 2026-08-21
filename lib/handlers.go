@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/pt-main/tap"
 	"github.com/pt-main/tap/color"
@@ -131,37 +132,90 @@ func RunScript(cfg *shared.Config, name string, rArgs []string) error {
 	if err != nil {
 		return err
 	}
-	if err := NewLuaState(rArgs[1:]).DoString(file); err != nil {
+	if err := NewLuaState(rArgs).DoString(file); err != nil {
 		return err
 	}
 	return nil
 }
 
-func RunHandler(p *tap.Parser, s []string) error {
-	cfg, err := GetCfg()
-	if err != nil {
-		return err
-	}
-	if tags_, ok := p.Flags["tagged"]; ok {
-		tags := strings.Split(tags_, ";")
-		for _, script := range cfg.InnerArrV["scripts"] {
-			scrTags := script.StringArrV["tags"]
-			scriptName := script.StringV["name"]
-			for _, tag := range scrTags {
-				if slices.Contains(tags, tag) {
-					if err := RunScript(cfg, scriptName, p.RawArgs[1:]); err != nil {
-						return err
+func MakeRunHandler(hasR bool) func(p *tap.Parser, s []string) error {
+	return func(p *tap.Parser, s []string) error {
+		cfg, err := GetCfg()
+		if err != nil {
+			return err
+		}
+		idx := 1
+		if slices.Contains([]string{"--gm", "--globalmode",
+			"--lm", "--localmode"}, p.RawArgs[0]) {
+			idx += 1
+		}
+		if hasR {
+			idx += 1
+		}
+		var args []string = nil
+		args_, ok := p.Flags["args"]
+		if ok {
+			args, err = ProcessShell(args_)
+			if err != nil {
+				return err
+			}
+			if args == nil {
+				args = []string{}
+			}
+		}
+		if args == nil {
+			args = p.RawArgs[idx:]
+		}
+		if tags_, ok := p.Flags["tagged"]; ok {
+			_, parallel := p.Flags["parallel"]
+			tags := strings.Split(tags_, ";")
+			errs := []string{}
+			goru := 0
+			for _, script := range cfg.InnerArrV["scripts"] {
+				scrTags := script.StringArrV["tags"]
+				scriptName := script.StringV["name"]
+				for _, tag := range scrTags {
+					if slices.Contains(tags, tag) {
+						p.Print("verbose", "Run %v: ", scriptName)
+						if parallel {
+							go func() {
+								goru += 1
+								if err := RunScript(cfg, scriptName, args); err != nil {
+									p.Print("verbose", "[?RD]Err[?YW]:[RT] %v", err)
+									errs = append(errs, err.Error())
+								} else {
+									p.Print("verbose", "[?GN]Ok[?RT]")
+								}
+								goru -= 1
+							}()
+							time.Sleep(time.Second / 500)
+						} else {
+							if err := RunScript(cfg, scriptName, args); err != nil {
+								p.Print("verbose", "[?RD]Err[?YW]:[RT] %v", err)
+								errs = append(errs, err.Error())
+							} else {
+								p.Print("verbose", "[?GN]Ok[?RT]")
+							}
+						}
 					}
 				}
 			}
+			p.Print("verbose", "[?GN]Gorutines: %v[?RT]", goru)
+			for goru != 0 {
+				time.Sleep(time.Second / 500)
+			}
+			if len(errs) == 0 {
+				return nil
+			}
+			return fmt.Errorf(" - " + strings.Join(errs, "\n - "))
+		} else {
+			if len(s) < 1 {
+				return fmt.Errorf("Invalid argument length: need more or equals to 1")
+			}
+			name := s[0]
+			p.Print("verbose", "Run %v: ", name)
+			return RunScript(cfg, name, args)
 		}
-		return nil
-	} else {
-		if len(s) < 1 {
-			return fmt.Errorf("Invalid argument length: need more or equals to 1")
-		}
-		name := s[0]
-		return RunScript(cfg, name, p.RawArgs)
 	}
 }
 

@@ -1,4 +1,4 @@
-# run - Script Manager
+# run – Script Manager
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -8,7 +8,7 @@
 go install github.com/pt-main/run@latest
 ```
 
-**run** is a script manager that lets you add, remove, and run scripts in different languages with a single command. Scripts are stored in `~/run/` and are accessible from any folder.
+**run** is a script manager that lets you add, remove, and run scripts in various languages with a single command. Scripts are stored in `~/run/` and are accessible from any folder.
 
 ---
 
@@ -16,15 +16,15 @@ go install github.com/pt-main/run@latest
 
 | Problem | run solves |
 |---------|------------|
-| **Scripts scattered across projects** | Global storage in `~/run/` |
+| **Scripts scattered across projects** | Global storage at `~/run/` |
 | **Need to remember paths** | One command: `run r myscript` |
-| **Different languages** | Supports Python, Bash, Batch, Lua — and easily extensible |
+| **Different languages** | Supports Python, Bash, Batch, Lua – and easily extensible |
 | **Grouping** | Tags for selective execution (`--tagged`) |
-| **Project‑specific scripts** | Local mode with `.run/` in the current folder |
-| **Safety** | Configuration in TYCL with a strict contract |
-| **Compactness** | Small binary, fully platform‑independent |
+| **Project scripts** | Local mode with `.run/` in the current folder |
+| **Safety** | TYCL config with a strict contract |
+| **Compactness** | Small binary, fully platform-independent |
 
-run gives you **globality, simplicity, and control** without unnecessary complexity.
+run gives **globality, simplicity, and control** without unnecessary complexity.
 
 ---
 
@@ -40,7 +40,7 @@ chmod +x run-linux-amd64
 sudo mv run-linux-amd64 /usr/local/bin/run
 
 # Windows
-# Just place run-windows-amd64.exe in a folder that is in your PATH
+# Just put run-windows-amd64.exe in a folder that is in your PATH
 ```
 
 ### Via `go install`
@@ -49,9 +49,9 @@ sudo mv run-linux-amd64 /usr/local/bin/run
 go install github.com/pt-main/run@latest
 ```
 
-**On first run**, run will create the following structure in `~/run/`:
-- `config.tycl` – configuration (TYCL) with the script list.
-- `scripts/` – Lua wrappers for running scripts.
+**On first launch** run will create the following structure in `~/run/`:
+- `config.tycl` – configuration (TYCL) with the list of scripts.
+- `scripts/` – Lua wrappers for execution.
 - `base/` – original script files.
 
 ---
@@ -59,7 +59,7 @@ go install github.com/pt-main/run@latest
 ## Syntax
 
 ```bash
-run [--<lm/localmode>] <cmd> <args...>
+run [--<lm>/<localmode> | --<gm>/<globalmode>] <cmd> <args...>
 ```
 
 ### Commands
@@ -68,35 +68,37 @@ run [--<lm/localmode>] <cmd> <args...>
 |---------|-------------|---------|
 | `add <path> <name> [docs]` | Add a script (supports `.py`, `.sh`, `.bat`, `.lua`) | `run add script.py mypy` |
 | `remove <name>` | Remove a script | `run remove mypy` |
-| `list` | Show the list of scripts | `run list` |
+| `list` | List all scripts | `run list` |
 | `r <name> [args...]` | Run a script | `run r mypy arg1 arg2` |
 | `<name> [args...]` | Run a script (if the name does not conflict with a run command) | `run mypy arg1` |
 | `tag <name> <tags...>` | Add tags | `run tag mypy deploy prod` |
 | `rm-tag <name> <tags...>` | Remove tags | `run rm-tag mypy prod` |
 | `localmode [true/false]` | Enable/disable local mode, show current state | `run localmode true` |
-| `--tagged="tag1;tag2"` | Run scripts with any of the given tags | `run --tagged="deploy;test"` |
+| `r --tagged="tag1;tag2;..."` | Run scripts that have any of the given tags | `run r --tagged="deploy;test"` |
+| `r --tagged="..." --parallel` | Run tagged scripts in parallel | `run r --tagged="deploy;build" --parallel` |
+| `r --tagged="..." --args=""` | Pass arguments to the script (use when you need to avoid conflicts with run flags, or to explicitly pass no arguments) | `run r --tagged="deploy;build" --args="--tagged dev"` <br> `run r --tagged="deploy;build" --parallel --args` – passes no arguments (instead of passing `--parallel`) |
 | `version` | Show version | `run version` |
 
 ### Flags
 
-- `--force` with `add` – replaces an existing script with the same name.
+- `--force` with `add` – overwrite an existing script with the same name.
 - `--tagged="tag1;tag2"` with `r` – run by tags.
-- `--ll` / `--localmode` immediately after `run` – run in local mode; after completion, restores the mode previously set by `run localmode`.
+- `--ll` / `--localmode` / `--gm` / `--globalmode` immediately after `run` – run in local/global mode for that single command, restoring the previously set mode afterwards.
 
 ---
 
 ## Local mode
 
-By default, run works globally (configuration in `~/run/`).  
+By default, run works globally (config in `~/run/`).  
 Enable local mode and run will use `.run/` in the current folder:
 
 ```bash
 run localmode true  # enable
 run localmode false # disable
-run localmode       # shows current state (false / true)
+run localmode       # prints current state (e.g., false)
 ```
 
-This is convenient for projects: scripts are stored in the repository and do not interfere with the global configuration.
+This is convenient for projects: scripts live in the repository and do not interfere with the global config.
 
 ---
 
@@ -104,14 +106,14 @@ This is convenient for projects: scripts are stored in the repository and do not
 
 run automatically generates **Lua wrappers** that invoke the original scripts with the passed arguments.
 
-| Extension | Language | Note |
-|-----------|----------|------|
-| `.py` | Python | Looks for `python3`, then `python` |
-| `.sh` | Bash | Executes via `bash` |
-| `.bat` | Batch (Windows) | Executes via `cmd /c` |
-| `.lua` | Lua | Executed directly (no wrapper) |
+| Extension | Language | Notes |
+|-----------|----------|-------|
+| `.py`     | Python   | Looks for `python3`, then `python` |
+| `.sh`     | Bash     | Executes via `bash` |
+| `.bat`    | Batch (Windows) | Executes via `cmd /c` |
+| `.lua`    | Lua      | Executed directly (no wrapper) |
 
-Adding a new language is easy – just extend the template in `templates.go`.
+Adding a new language is easy – just add a template in `templates.go`.
 
 ---
 
@@ -119,33 +121,33 @@ Adding a new language is easy – just extend the template in `templates.go`.
 
 ```
 ~/run/
-├── config.tycl          # Configuration in TYCL (strict contract)
+├── config.tycl          # TYCL config (strict contract)
 ├── scripts/             # Lua wrappers for execution
 │   └── myscript.lua
 └── base/                # Original scripts
     └── myscript.py
 ```
 
-### TYCL configuration
+### TYCL config
 
-Script configuration is built on [Tycl](https://github.com/pt-main/tycl) – a typed language with the concept of contracts (fixed configuration formats).
+Script configuration is built on [Tycl](https://github.com/pt-main/tycl) – a typed language with the concept of contracts (fixed config formats).
 
-The configuration contract:
+The config contract is:
 
 ```tycl
 strict {
     scripts: objects = strict {
         name: string,        // Script name (command)
-        script: string,      // Wrapper file name (matches the Lua script name inside run/scripts, without extension)
+        script: string,      // Wrapper file name (matches the Lua script name in run/scripts, without extension)
         description: string, // Description
         tags: strings,       // Tags
-        source: string,      // Original script source path
+        source: string,      // Source path of the original script
         ext: string,         // Extension (.py, .sh, .bat, .lua)
     },
 }
 ```
 
-The configuration is populated automatically via the `run` CLI. After the first run it looks like this:
+The config is filled automatically by the `run` CLI. After first launch it looks like this:
 
 ```tycl
 {
@@ -218,7 +220,7 @@ or
 run --localmode add script.py build
 ```
 
-**Important**: the `--localmode` flag must appear immediately after `run` to work correctly.
+**Important:** the `--localmode` flag must appear immediately after `run` to work correctly.
 
 ---
 
@@ -228,4 +230,4 @@ Apache 2.0 – see [LICENSE](LICENSE) for details.
 
 ---
 
-By Pt, 2026 – built with tap, tycl, and lc.
+By Pt, 2026 – built with tap, tycl and lc.

@@ -2,7 +2,10 @@ package runlib
 
 import (
 	"fmt"
+	"log"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 
 	"github.com/pt-main/lc/engine/core"
 	"github.com/pt-main/tycl"
@@ -73,12 +76,58 @@ func NewLuaState(args []string) *lua.LState {
 			return 0
 		}
 
-		rArgs := append([]string{name}, scriptArgs...)
-
-		if err := RunScript(cfg, name, rArgs); err != nil {
+		if err := RunScript(cfg, name, scriptArgs); err != nil {
 			L.RaiseError("failed to run script %q: %v", name, err)
 			return 0
 		}
+		return 0
+	}))
+
+	var (
+		activeScripts int32
+		wg            sync.WaitGroup
+	)
+
+	L.SetGlobal("run_script_parallel", L.NewFunction(func(L *lua.LState) int {
+		name := L.CheckString(1)
+		var scriptArgs []string
+		top := L.GetTop()
+		for i := 2; i <= top; i++ {
+			arg := L.Get(i)
+			if str, ok := arg.(lua.LString); ok {
+				scriptArgs = append(scriptArgs, string(str))
+			} else {
+				scriptArgs = append(scriptArgs, L.ToStringMeta(arg).String())
+			}
+		}
+
+		cfg, err := GetCfg()
+		if err != nil {
+			L.RaiseError("failed to load config: %v", err)
+			return 0
+		}
+
+		atomic.AddInt32(&activeScripts, 1)
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+			defer atomic.AddInt32(&activeScripts, -1)
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("script %q panicked: %v", name, r)
+				}
+			}()
+
+			if err := RunScript(cfg, name, scriptArgs); err != nil {
+				log.Printf("script %q failed: %v", name, err)
+			}
+		}()
+		return 0
+	}))
+
+	L.SetGlobal("wait", L.NewFunction(func(L *lua.LState) int {
+		wg.Wait()
 		return 0
 	}))
 

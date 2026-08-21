@@ -1,4 +1,4 @@
-# run - глобальный менеджер скриптов
+# run - менеджер скриптов
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -8,7 +8,7 @@
 go install github.com/pt-main/run@latest
 ```
 
-**run** - это глобальный менеджер скриптов, который позволяет добавлять, удалять и запускать скрипты на разных языках одной командой. Скрипты хранятся в `~/run/` и доступны из любой папки.
+**run** - это менеджер скриптов, который позволяет добавлять, удалять и запускать скрипты на разных языках одной командой. Скрипты хранятся в `~/run/` и доступны из любой папки.
 
 ---
 
@@ -59,7 +59,7 @@ go install github.com/pt-main/run@latest
 ## Синтаксис
 
 ```bash
-run [--<lm/localmode>] <cmd> <args...>
+run [--<lm/localmode>/<gm/globalmode>] <cmd> <args...>
 ```
 
 ### Команды
@@ -74,14 +74,16 @@ run [--<lm/localmode>] <cmd> <args...>
 | `tag <name> <tags...>` | Добавить теги | `run tag mypy deploy prod` |
 | `rm-tag <name> <tags...>` | Удалить теги | `run rm-tag mypy prod` |
 | `localmode [true/false]` | Включить/выключить локальный режим, показать текущее состояние запуска скриптов | `run localmode true` |
-| `--tagged="tag1;tag2"` | Запустить скрипты с любым из тегов | `run --tagged="deploy;test"` |
+| `r --tagged="tag1;tag2;..."` | Запустить скрипты с любым из тегов | `run r --tagged="deploy;test"` |
+| `r --tagged="..." --parralel` | Параллельный запуск скриптов с нужным тегом | `run r --tagged="deploy;build" --paralel` |
+| `r --tagged="..." --args=""` | Передача аргументов в скрипт (если нужно избежать конфликта, например с флагами run, или не передавать аргументы) | `run r --tagged="deploy;build" --args="--tagged dev"`,`run r --tagged="deploy;build" --parallel --args` - не передает аргументов, вместо того чтобы передавать `--parallel` |
 | `version` | Показать версию | `run version` |
 
 ### Флаги
 
 - `--force` при `add` - заменяет существующий скрипт с таким же именем.
 - `--tagged="tag1;tag2"` при `r` - запуск по тегам.
-- `--ll / --localmode` сразу после `run` - запуск в локальном режиме, после завершения востанавливает установленнй с помощью `run localmode` режим.
+- `--ll / --localmode / --gm / --globalmode` сразу после `run` - запуск в локальном/глобальном режиме, после завершения востанавливает установленный с помощью `run localmode` режим.
 
 ---
 

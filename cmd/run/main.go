@@ -11,15 +11,16 @@ import (
 func main() {
 	args := os.Args
 	lm := localmode.IsLocalmode()
-	has := false
+	temp := lm
+
 	if len(args) > 1 {
 		if args[1] == "--localmode" || args[1] == "--lm" {
-			has = true
+			temp = true
+		} else if args[1] == "--globalmode" || args[1] == "--gm" {
+			temp = false
 		}
 	}
-	if has {
-		localmode.Set(true)
-	}
+	localmode.Set(temp)
 
 	ok, err := run.CheckConfigDir()
 	if err != nil {
@@ -38,7 +39,7 @@ func main() {
 		fmt.Println(err)
 	}
 
-	if has {
+	if localmode.IsLocalmode() == temp {
 		localmode.Set(lm)
 	}
 }

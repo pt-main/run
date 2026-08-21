@@ -55,11 +55,11 @@ Use --force flag to replace script if it's already added with same name.`,
 		`Show scripts list`, nil, nil, false)
 
 	p.AddCommand("r",
-		runlib.RunHandler, `Run scripts`,
+		runlib.MakeRunHandler(true), `Run scripts`,
 		nil, nil, true)
 
 	p.AddCommand(tap.DEFAULT_CMD,
-		runlib.RunHandler, ``,
+		runlib.MakeRunHandler(false), ``,
 		nil, nil, true)
 
 	p.AddCommand("tag",
