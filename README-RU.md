@@ -13,7 +13,7 @@ go install github.com/pt-main/run/tal/cmd/tal@latest
 
 **run** - это менеджер скриптов, который позволяет добавлять, удалять и запускать скрипты на разных языках одной командой. Скрипты хранятся в `~/run/` и доступны из любой папки.
 
-Проект содержит внутри себя Task Lua (tal) - таскер, безшовно интегрированный в run. Пожробнее можно прочитать в README проекта.
+Проект содержит внутри себя Task Lua (tal) - таскер, безшовно интегрированный в run. Подробнее можно прочитать в [README](https://github.com/pt-main/run/blob/main/tal/README.md) проекта.
 
 ---
 
@@ -31,7 +31,7 @@ go install github.com/pt-main/run/tal/cmd/tal@latest
 
 run даёт **глобальность, простоту и контроль** без лишней сложности.
 
-## А зачем Tal?
+## А зачем [Tal](https://github.com/pt-main/run/blob/main/tal/README.md)?
 
 | Проблема | tal решает |
 |----------|------------|
@@ -237,3 +237,7 @@ run --localmode add script.py build
 ```
 
 **Важно**: флаг `--localmode` для корректной должен быть сразу после `-run`.
+
+---
+
+By Pt, 2026 – written using `lc`, `tap`, `pack`, `tycl`.
