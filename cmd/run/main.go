@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	run "github.com/pt-main/run/lib"
-	localmode "github.com/pt-main/run/lib/localMode"
+	run "github.com/pt-main/run/run"
+	localmode "github.com/pt-main/run/run/localMode"
 )
 
 func main() {

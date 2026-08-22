@@ -1,14 +1,19 @@
-# run – Script Manager
+# run – script and task manager
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Release](https://img.shields.io/github/v/release/pt-main/run)](https://github.com/pt-main/run/releases)
 
 ```bash
-go install github.com/pt-main/run@latest
+# run installation
+go install github.com/pt-main/run/cmd/run@latest
+# tal installation
+go install github.com/pt-main/run/tal/cmd/tal@latest
 ```
 
 **run** is a script manager that lets you add, remove, and run scripts in various languages with a single command. Scripts are stored in `~/run/` and are accessible from any folder.
+
+The project bundles Task Lua (tal) – a task runner seamlessly integrated into run. See the project's README for more details.
 
 ---
 
@@ -16,15 +21,26 @@ go install github.com/pt-main/run@latest
 
 | Problem | run solves |
 |---------|------------|
-| **Scripts scattered across projects** | Global storage at `~/run/` |
-| **Need to remember paths** | One command: `run r myscript` |
+| **Scripts scattered across projects** | Global storage `~/run/` |
+| **Need to remember paths** | One command: `run -r myscript` |
 | **Different languages** | Supports Python, Bash, Batch, Lua – and easily extensible |
 | **Grouping** | Tags for selective execution (`--tagged`) |
-| **Project scripts** | Local mode with `.run/` in the current folder |
-| **Safety** | TYCL config with a strict contract |
-| **Compactness** | Small binary, fully platform-independent |
+| **Project‑specific scripts** | Local mode with `.run/` in the current folder |
+| **Security** | TYCL config with a strict contract |
+| **Compactness** | Small binary, fully cross‑platform |
 
-run gives **globality, simplicity, and control** without unnecessary complexity.
+run gives you **globality, simplicity, and control** without unnecessary complexity.
+
+## Why Tal?
+
+| Problem | tal solves |
+|---------|------------|
+| **Makefiles are hard to read and write** | Simple DSL with comments and Lua instead of Shell |
+| **Incrementality is broken** | SHA256 hashes instead of modification times |
+| **No way to call tasks from each other** | Tasks can be called via built‑in functions |
+| **File dependencies are cumbersome** | Works out of the box |
+
+tal gives you **incrementality, modernity, and Lua** – all in one tool.
 
 ---
 
@@ -32,7 +48,7 @@ run gives **globality, simplicity, and control** without unnecessary complexity.
 
 ### As a binary
 
-Download the [release](https://github.com/pt-main/run/releases) for your OS/architecture and place it in your `PATH`:
+Download the [release](https://github.com/pt-main/run/releases) for your OS/architecture and put it in your `PATH`:
 
 ```bash
 # Linux/macOS
@@ -49,8 +65,8 @@ sudo mv run-linux-amd64 /usr/local/bin/run
 go install github.com/pt-main/run@latest
 ```
 
-**On first launch** run will create the following structure in `~/run/`:
-- `config.tycl` – configuration (TYCL) with the list of scripts.
+**On first run**, run will create the structure in `~/run/`:
+- `config.tycl` – config (TYCL) with the script list.
 - `scripts/` – Lua wrappers for execution.
 - `base/` – original script files.
 
@@ -59,31 +75,31 @@ go install github.com/pt-main/run@latest
 ## Syntax
 
 ```bash
-run [--<lm>/<localmode> | --<gm>/<globalmode>] <cmd> <args...>
+run [--<lm/localmode>/<gm/globalmode>] <cmd> <args...>
 ```
 
 ### Commands
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| `add <path> <name> [docs]` | Add a script (supports `.py`, `.sh`, `.bat`, `.lua`) | `run add script.py mypy` |
-| `remove <name>` | Remove a script | `run remove mypy` |
-| `list` | List all scripts | `run list` |
-| `r <name> [args...]` | Run a script | `run r mypy arg1 arg2` |
+| `-add <path> <name> [docs]` | Add a script (supports `.py`, `.sh`, `.bat`, `.lua`) | `run -add script.py mypy` |
+| `-remove <name>` | Remove a script | `run -remove mypy` |
+| `-list` | List scripts | `run -list` |
+| `-r <name> [args...]` | Run a script | `run -r mypy arg1 arg2` |
 | `<name> [args...]` | Run a script (if the name does not conflict with a run command) | `run mypy arg1` |
-| `tag <name> <tags...>` | Add tags | `run tag mypy deploy prod` |
-| `rm-tag <name> <tags...>` | Remove tags | `run rm-tag mypy prod` |
-| `localmode [true/false]` | Enable/disable local mode, show current state | `run localmode true` |
-| `r --tagged="tag1;tag2;..."` | Run scripts that have any of the given tags | `run r --tagged="deploy;test"` |
-| `r --tagged="..." --parallel` | Run tagged scripts in parallel | `run r --tagged="deploy;build" --parallel` |
-| `r --tagged="..." --args=""` | Pass arguments to the script (use when you need to avoid conflicts with run flags, or to explicitly pass no arguments) | `run r --tagged="deploy;build" --args="--tagged dev"` <br> `run r --tagged="deploy;build" --parallel --args` – passes no arguments (instead of passing `--parallel`) |
-| `version` | Show version | `run version` |
+| `-tag <name> <tags...>` | Add tags | `run -tag mypy deploy prod` |
+| `-rm-tag <name> <tags...>` | Remove tags | `run -rm-tag mypy prod` |
+| `-localmode [true/false]` | Enable/disable local mode, show current state | `run -localmode true` |
+| `-r --tagged="tag1;tag2;..."` | Run scripts with any of the given tags | `run -r --tagged="deploy;test"` |
+| `-r --tagged="..." --parallel` | Run scripts with the given tag in parallel | `run -r --tagged="deploy;build" --parallel` |
+| `-r --tagged="..." --args=""` | Pass arguments to the script (useful to avoid conflicts with run flags, or to not pass arguments) | `run -r --tagged="deploy;build" --args="--tagged dev"`, `run -r --tagged="deploy;build" --parallel --args` – passes no arguments, instead of passing `--parallel` |
+| `-version` | Show version | `run -version` |
 
 ### Flags
 
-- `--force` with `add` – overwrite an existing script with the same name.
-- `--tagged="tag1;tag2"` with `r` – run by tags.
-- `--ll` / `--localmode` / `--gm` / `--globalmode` immediately after `run` – run in local/global mode for that single command, restoring the previously set mode afterwards.
+- `--force` with `-add` – overwrite an existing script with the same name.
+- `--tagged="tag1;tag2"` with `-r` – run by tags.
+- `--ll` / `--localmode` / `--gm` / `--globalmode` immediately after `run` – run in local/global mode, restoring the mode set by `run -localmode` after completion.
 
 ---
 
@@ -93,27 +109,26 @@ By default, run works globally (config in `~/run/`).
 Enable local mode and run will use `.run/` in the current folder:
 
 ```bash
-run localmode true  # enable
-run localmode false # disable
-run localmode       # prints current state (e.g., false)
+run -localmode true  # enable
+run -localmode false # disable
+run -localmode       # shows current state (e.g., false)
 ```
 
-This is convenient for projects: scripts live in the repository and do not interfere with the global config.
+This is convenient for projects: scripts stay in the repository and do not interfere with the global config.
 
 ---
 
 ## Language support
 
-run automatically generates **Lua wrappers** that invoke the original scripts with the passed arguments.
+run automatically generates **Lua wrappers** that call the original scripts with the passed arguments.
 
-| Extension | Language | Notes |
-|-----------|----------|-------|
-| `.py`     | Python   | Looks for `python3`, then `python` |
-| `.sh`     | Bash     | Executes via `bash` |
-| `.bat`    | Batch (Windows) | Executes via `cmd /c` |
-| `.lua`    | Lua      | Executed directly (no wrapper) |
-
-Adding a new language is easy – just add a template in `templates.go`.
+| Extension | Language | Note |
+|-----------|----------|------|
+| `.py` | Python | Looks for `python3`, then `python` |
+| `.sh` | Bash | Executes via `bash` |
+| `.bat` | Batch | Executes via `cmd /c` |
+| `.lua` | Lua | Executed directly (no wrapper) |
+| `.tal.lua` | Task Lua (Tal) | Executes via `run tal` |
 
 ---
 
@@ -130,24 +145,24 @@ Adding a new language is easy – just add a template in `templates.go`.
 
 ### TYCL config
 
-Script configuration is built on [Tycl](https://github.com/pt-main/tycl) – a typed language with the concept of contracts (fixed config formats).
+The script configuration is built on [Tycl](https://github.com/pt-main/tycl) – a typed language with the concept of contracts (fixed configuration schemas).
 
-The config contract is:
+Config contract:
 
 ```tycl
 strict {
     scripts: objects = strict {
         name: string,        // Script name (command)
-        script: string,      // Wrapper file name (matches the Lua script name in run/scripts, without extension)
+        script: string,      // Wrapper file name (matches the Lua script name inside run/scripts, without extension)
         description: string, // Description
         tags: strings,       // Tags
-        source: string,      // Source path of the original script
+        source: string,      // Original script source path
         ext: string,         // Extension (.py, .sh, .bat, .lua)
     },
 }
 ```
 
-The config is filled automatically by the `run` CLI. After first launch it looks like this:
+The config is automatically populated by the `run` CLI. After the first run, it looks like:
 
 ```tycl
 {
@@ -173,7 +188,7 @@ Each wrapper is a Lua script that provides:
 - `script_path(name)` – path to the original script.
 - `get_arg(idx)` – get an argument by index.
 - `get_args()` – table of all arguments.
-- `run_script(name, ...)` – run another script from the wrapper.
+- `run_script(name, ...)` – run another script from inside the wrapper.
 
 ---
 
@@ -182,8 +197,8 @@ Each wrapper is a Lua script that provides:
 ### Adding a script
 
 ```bash
-run add ~/projects/tools/deploy.py deploy "Deploy to production"
-run list
+run -add ~/projects/tools/deploy.py deploy "Deploy to production"
+run -list
 # ╭─────── Scripts
 # ⎬─ deploy (.py):
 # │     Deploy to production
@@ -193,24 +208,24 @@ run list
 ### Running
 
 ```bash
-run r deploy --env=prod
+run -r deploy --env=prod
 # or
-run deploy --env=prod   # when the script name does not conflict with run commands
+run deploy --env=prod # when the script name does not conflict with run commands
 ```
 
 ### Tags
 
 ```bash
-run tag deploy prod utils
-run r --tagged="prod"   # runs all scripts with the tag prod
+run -tag deploy prod utils
+run -r --tagged="prod"   # runs all scripts with the tag prod
 ```
 
 ### Local mode
 
 ```bash
 cd ~/myproject
-run localmode true
-run add script.py build
+run -localmode true
+run -add script.py build
 # now the script will be saved in .run/
 ```
 
@@ -220,14 +235,4 @@ or
 run --localmode add script.py build
 ```
 
-**Important:** the `--localmode` flag must appear immediately after `run` to work correctly.
-
----
-
-## License
-
-Apache 2.0 – see [LICENSE](LICENSE) for details.
-
----
-
-By Pt, 2026 – built with tap, tycl and lc.
+**Important**: the `--localmode` flag must appear immediately after `run` to work correctly.

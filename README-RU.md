@@ -1,14 +1,19 @@
-# run - менеджер скриптов
+# run - менеджер скриптов и задач
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Release](https://img.shields.io/github/v/release/pt-main/run)](https://github.com/pt-main/run/releases)
 
 ```bash
-go install github.com/pt-main/run@latest
+# run installation
+go install github.com/pt-main/run/cmd/run@latest
+# tal installation
+go install github.com/pt-main/run/tal/cmd/tal@latest
 ```
 
 **run** - это менеджер скриптов, который позволяет добавлять, удалять и запускать скрипты на разных языках одной командой. Скрипты хранятся в `~/run/` и доступны из любой папки.
+
+Проект содержит внутри себя Task Lua (tal) - таскер, безшовно интегрированный в run. Пожробнее можно прочитать в README проекта.
 
 ---
 
@@ -17,7 +22,7 @@ go install github.com/pt-main/run@latest
 | Проблема | run решает |
 |----------|------------|
 | **Скрипты разбросаны по проектам** | Глобальное хранилище `~/run/` |
-| **Нужно помнить пути** | Одна команда: `run r myscript` |
+| **Нужно помнить пути** | Одна команда: `run -r myscript` |
 | **Разные языки** | Поддержка Python, Bash, Batch, Lua - и легко расширяется |
 | **Группировка** | Теги для выборочного запуска (`--tagged`) |
 | **Проектные скрипты** | Локальный режим с `.run/` в текущей папке |
@@ -25,6 +30,17 @@ go install github.com/pt-main/run@latest
 | **Компактность** | Маленький бинарник при полной независимости от платформы |
 
 run даёт **глобальность, простоту и контроль** без лишней сложности.
+
+## А зачем Tal?
+
+| Проблема | tal решает |
+|----------|------------|
+| **Makefile сложно читать и писать** | Простой DSL с комментариями и Lua вместо Shell |
+| **Инкрементальность работает криво** | Хеши SHA256 вместо времени модификации |
+| **Нет вызова задач друг из друга** | Можно вызывать таски через встроенную функцию |
+| **Зависимости от файлов громоздкие** | работает из коробки |
+
+tal даёт **инкрементальность, современность и Lua** - всё в одном инструменте.
 
 ---
 
@@ -66,24 +82,24 @@ run [--<lm/localmode>/<gm/globalmode>] <cmd> <args...>
 
 | Команда | Описание | Пример |
 |---------|----------|--------|
-| `add <path> <name> [docs]` | Добавить скрипт (поддерживает `.py`, `.sh`, `.bat`, `.lua`) | `run add script.py mypy` |
-| `remove <name>` | Удалить скрипт | `run remove mypy` |
-| `list` | Показать список скриптов | `run list` |
-| `r <name> [args...]` | Запустить скрипт | `run r mypy arg1 arg2` |
+| `-add <path> <name> [docs]` | Добавить скрипт (поддерживает `.py`, `.sh`, `.bat`, `.lua`) | `run -add script.py mypy` |
+| `-remove <name>` | Удалить скрипт | `run -remove mypy` |
+| `-list` | Показать список скриптов | `run -list` |
+| `-r <name> [args...]` | Запустить скрипт | `run -r mypy arg1 arg2` |
 | `<name> [args...]` | Запустить скрипт (если имя не совпадает с командой) | `run mypy arg1` |
-| `tag <name> <tags...>` | Добавить теги | `run tag mypy deploy prod` |
-| `rm-tag <name> <tags...>` | Удалить теги | `run rm-tag mypy prod` |
-| `localmode [true/false]` | Включить/выключить локальный режим, показать текущее состояние запуска скриптов | `run localmode true` |
-| `r --tagged="tag1;tag2;..."` | Запустить скрипты с любым из тегов | `run r --tagged="deploy;test"` |
-| `r --tagged="..." --parralel` | Параллельный запуск скриптов с нужным тегом | `run r --tagged="deploy;build" --paralel` |
-| `r --tagged="..." --args=""` | Передача аргументов в скрипт (если нужно избежать конфликта, например с флагами run, или не передавать аргументы) | `run r --tagged="deploy;build" --args="--tagged dev"`,`run r --tagged="deploy;build" --parallel --args` - не передает аргументов, вместо того чтобы передавать `--parallel` |
-| `version` | Показать версию | `run version` |
+| `-tag <name> <tags...>` | Добавить теги | `run -tag mypy deploy prod` |
+| `-rm-tag <name> <tags...>` | Удалить теги | `run -rm-tag mypy prod` |
+| `-localmode [true/false]` | Включить/выключить локальный режим, показать текущее состояние запуска скриптов | `run -localmode true` |
+| `-r --tagged="tag1;tag2;..."` | Запустить скрипты с любым из тегов | `run -r --tagged="deploy;test"` |
+| `-r --tagged="..." --parralel` | Параллельный запуск скриптов с нужным тегом | `run -r --tagged="deploy;build" --paralel` |
+| `-r --tagged="..." --args=""` | Передача аргументов в скрипт (если нужно избежать конфликта, например с флагами run, или не передавать аргументы) | `run -r --tagged="deploy;build" --args="--tagged dev"`,`run -r --tagged="deploy;build" --parallel --args` - не передает аргументов, вместо того чтобы передавать `--parallel` |
+| `-version` | Показать версию | `run -version` |
 
 ### Флаги
 
-- `--force` при `add` - заменяет существующий скрипт с таким же именем.
-- `--tagged="tag1;tag2"` при `r` - запуск по тегам.
-- `--ll / --localmode / --gm / --globalmode` сразу после `run` - запуск в локальном/глобальном режиме, после завершения востанавливает установленный с помощью `run localmode` режим.
+- `--force` при `-add` - заменяет существующий скрипт с таким же именем.
+- `--tagged="tag1;tag2"` при `-r` - запуск по тегам.
+- `--ll / --localmode / --gm / --globalmode` сразу после `run` - запуск в локальном/глобальном режиме, после завершения востанавливает установленный с помощью `run -localmode` режим.
 
 ---
 
@@ -93,9 +109,9 @@ run [--<lm/localmode>/<gm/globalmode>] <cmd> <args...>
 Включите локальный режим - и run будет использовать `.run/` в текущей папке:
 
 ```bash
-run localmode true  # включить
-run localmode false # выключить
-run localmode       # fasle - выводит состояние
+run -localmode true  # включить
+run -localmode false # выключить
+run -localmode       # fasle - выводит состояние
 ```
 
 Это удобно для проектов: скрипты хранятся в репозитории и не мешают глобальному конфигу.
@@ -110,10 +126,9 @@ run автоматически генерирует **Lua-обёртки**, ко
 |------------|------|------------|
 | `.py` | Python | Ищет `python3`, затем `python` |
 | `.sh` | Bash | Выполняет через `bash` |
-| `.bat` | Batch (Windows) | Выполняет через `cmd /c` |
+| `.bat` | Batch | Выполняет через `cmd /c` |
 | `.lua` | Lua | Выполняется напрямую (без обёртки) |
-
-Добавить новый язык просто - достаточно дописать шаблон в `templates.go`. 
+| `.tal.lua` | Task Lua (Tal) | Выполняет через `run tal` |
 
 ---
 
@@ -183,8 +198,8 @@ strict {
 ### Добавление скрипта
 
 ```bash
-run add ~/projects/tools/deploy.py deploy "Deploy to production"
-run list
+run -add ~/projects/tools/deploy.py deploy "Deploy to production"
+run -list
 # ╭─────── Scripts
 # ⎬─ deploy (.py):
 # │     Deploy to production
@@ -194,7 +209,7 @@ run list
 ### Запуск
 
 ```bash
-run r deploy --env=prod
+run -r deploy --env=prod
 # или
 run deploy --env=prod # когда имя скрипта не конфликтует с командами run
 ```
@@ -202,16 +217,16 @@ run deploy --env=prod # когда имя скрипта не конфликту
 ### Теги
 
 ```bash
-run tag deploy prod utils
-run r --tagged="prod"   # запустит все скрипты с тегом prod
+run -tag deploy prod utils
+run -r --tagged="prod"   # запустит все скрипты с тегом prod
 ```
 
 ### Локальный режим
 
 ```bash
 cd ~/myproject
-run localmode true
-run add script.py build
+run -localmode true
+run -add script.py build
 # теперь скрипт сохранится в .run/
 ```
 
@@ -221,14 +236,4 @@ run add script.py build
 run --localmode add script.py build
 ```
 
-**Важно**: флаг `--localmode` для корректной должен быть сразу после `run`.
-
----
-
-## Лицензия
-
-Apache 2.0 - подробности в [LICENSE](LICENSE).
-
----
-
-By Pt, 2026 - написано с использованием tap, tycl и lc.
+**Важно**: флаг `--localmode` для корректной должен быть сразу после `-run`.
