@@ -1,7 +1,7 @@
 {
   "output_dir": "./build",
   "platforms": "all",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "cgo_enabled": 0,
   "go_build_args": ["-trimpath", "-buildvcs=false"],
   "ldflags": "-s -w",

@@ -102,7 +102,7 @@ func NewParser() *parser3.Adapter {
 				NodeType: "code",
 				Expr: parser3.RepeatExpr{
 					Expr: parser3.TokenExpr{TokenType: "CODE"},
-					Min:  1,
+					Min:  0,
 				},
 			},
 		},
