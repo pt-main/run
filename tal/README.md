@@ -4,10 +4,10 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Release](https://img.shields.io/github/v/release/pt-main/tal)](https://github.com/pt-main/tal/releases)
 
-> tal - Task Lua
+> tal – Task Lua
 
 ```bash
-go install github.com/pt-main/tal/cmd/tal@latest
+go install github.com/pt-main/run/tal/cmd/tal@latest
 ```
 
 **tal** is a simple, modern task runner that uses Lua as its scripting language. It lets you describe tasks in plain Lua with annotations, track file changes, and run only what has actually changed.
@@ -20,7 +20,7 @@ go install github.com/pt-main/tal/cmd/tal@latest
 |---------|-------------------|
 | **Makefiles are hard to read and write** | A simple DSL with comments and Lua instead of Shell |
 | **Incremental builds work poorly** | SHA256 hashes instead of modification timestamps |
-| **No way to call tasks from one another** | Call tasks via a built-in function |
+| **No way to call tasks from one another** | Call tasks via a built‑in function |
 | **Cumbersome file dependencies** | `#depends file1 file2` works out of the box |
 
 tal gives **incrementality, simplicity, and Lua** – all in one tool.
@@ -29,26 +29,13 @@ tal gives **incrementality, simplicity, and Lua** – all in one tool.
 
 ## Installation
 
-### As a binary
-
-Download the [release](https://github.com/pt-main/tal/releases) for your OS/architecture, rename it, and place it in your `PATH`:
-
 ```bash
-# Linux/macOS
-chmod +x tal
-sudo mv tal /usr/local/bin/tal
-
-# Windows
-# Put tal.exe in a folder that is in your PATH
+go install github.com/pt-main/run/tal/cmd/tal@latest
 ```
 
-### Via `go install`
+When you install [run](https://github.com/pt-main/run), tal is installed automatically and becomes available as `run tal ...`.
 
-```bash
-go install github.com/pt-main/tal/cmd/tal@latest
-```
-
-On first run, `tal update` creates `.tal.pack` – a file containing hashes of all files in the current directory.
+On first run, `tal update` creates `.tal.pack` – a file containing hashes of all files in the current directory. You can also initialize projects with `tal init`.
 
 ---
 
@@ -95,8 +82,13 @@ script("test")
 ## CLI Commands
 
 ```bash
-tal run main.task.lua <args>    # Parses main.task.lua, executes the DSL with arguments
-tal update        # Force update or initialize .tal.pack
+tal run <file> <args>             # Parses <file>, executes the DSL with arguments using .tal.pack (required)
+tal update                        # Force update or initialize .tal.pack
+tal init                          # Initialize a project (creates .tal.pack and main.task.lua)
+tal list <file>                   # List all scripts in the file
+
+# For more information –
+tal help
 ```
 
 `tal update` is mandatory on first use of tal in a directory.
@@ -117,7 +109,7 @@ Incrementality is enabled by the `depends` command (`-- #depends ...`) and is di
 
 ## Built-in Lua Runtime
 
-Each task is a Lua function executed in an environment that provides access to:
+Each task is a Lua function executed in an environment that provides access to the following functions:
 
 - `changed_list` – a table with paths of changed files.
 - `tasker.add(deps, name, func)` – registers a task.
@@ -126,7 +118,7 @@ Each task is a Lua function executed in an environment that provides access to:
 - `shell(string)` – shorthand for `os.execute`.
 - `print_colored(string)` – coloured output (uses the colour system from [`tap`](https://github.com/pt-main/tap).color).
 
-When tal is used from [`run`](https://github.com/pt-main/run), an additional command becomes available – `run(args_string)`, which directly calls run and parses arguments from the input string.
+When tal is used from `run`, an additional function becomes available – `run(args_string)`, which directly calls run and parses arguments from the input string.
 
 **Important**: You cannot use external Lua libraries (the Lua interpreter in tal is written in [Go](https://github.com/yuin/gopher-lua) and does not depend on the system or installed Lua libraries).
 
