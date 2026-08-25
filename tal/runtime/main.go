@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -49,7 +50,7 @@ available in a project.
   [?BBK]tal list <files...>[?RT]
 
 [?BBE]Example:[?RT]
-  [?BBK]tal list tasks.lua[?RT]`,
+  [?BBK]tal list main.task.lua[?RT]`,
 		[]string{"task-lua-file"}, nil, true)
 
 	p.AddCommand("run", RunHandler,
@@ -63,9 +64,9 @@ and are not interpreted by the CLI.
   [?BBK]tal run <file> [args...][?RT]
 
 [?BBE]Examples:[?RT]
-  [?BBK]tal run tasks.lua[?RT]           # run the script (main block or default)
-  [?BBK]tal run tasks.lua build[?RT]     # pass "build" as argument to the script
-  [?BBK]tal run tasks.lua test -v[?RT]   # pass arguments to the script`,
+  [?BBK]tal run main.task.lua[?RT]           # run the script (main block or default)
+  [?BBK]tal run main.task.lua build[?RT]     # pass "build" as argument to the script
+  [?BBK]tal run main.task.lua test -v[?RT]   # pass arguments to the script`,
 		[]string{"task-lua-file"}, nil, true)
 
 	p.AddCommand("init", InitHandler,
@@ -85,7 +86,7 @@ func InitHandler(p *tap.Parser, s []string) error {
 	color.PrintlnColored("Update err: %v", Update())
 	color.PrintlnColored("File creating err: %v", write("main.task.lua", []byte(`-- @
 if #get_args() > 0 then
-    run(get_args()[1]) 
+    script(get_args()[1]) 
 end`)))
 	return nil
 }
@@ -107,9 +108,10 @@ func ListHandler(p *tap.Parser, s []string) error {
 		if err != nil {
 			return err
 		}
-		parsed, err := lang.Process(file)
-		if err != nil {
-			return err
+		var err_ lccore.ErrorInterface
+		parsed, err_ := lang.Process(file)
+		if err_ != nil {
+			return errors.New(lang.ErrFmt(err_))
 		}
 		res := []string{"[?GN]╭─────── [?RT][[?YW]" +
 			center(fileName, 20) + "[?RT]] Scripts"}
@@ -158,9 +160,10 @@ func RunHandler(p *tap.Parser, s []string) error {
 	if err != nil {
 		return err
 	}
-	processed, err := lang.Process(file)
-	if err != nil {
-		return fmt.Errorf(lccore.GetRealError(err))
+	var err_ lccore.ErrorInterface
+	processed, err_ := lang.Process(file)
+	if err_ != nil {
+		return errors.New(lang.ErrFmt(err_))
 	}
 	generated, err := generation.GenerateCode(processed)
 	return ls.DoString(generated)

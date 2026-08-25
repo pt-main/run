@@ -3,6 +3,7 @@ package core
 import (
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/iancoleman/orderedmap"
 	"github.com/pt-main/pack/lib/core"
+	"github.com/pt-main/run/tal/lang"
 )
 
 // fileHash computes SHA256 hash of a file in a streaming fashion.
@@ -145,11 +147,18 @@ func Changes(was *orderedmap.OrderedMap, where string) ([]string, error) {
 
 func StateAsPackCore(data *orderedmap.OrderedMap) ([]byte, error) {
 	c := core.NewCore(data)
-	return c.CreateFile()
+	res, err := c.CreateFile()
+	if err != nil {
+		err = errors.New(lang.GetRealErrorReverse(err))
+	}
+	return res, err
 }
 
 func PackCoreAsState(data []byte) (*orderedmap.OrderedMap, error) {
 	c := core.NewCore(nil)
 	err := c.ReadFile(data)
+	if err != nil {
+		err = errors.New(lang.GetRealErrorReverse(err))
+	}
 	return c.Containers, err
 }

@@ -56,7 +56,11 @@ function tasker.run(name)
 end
 
 -- for simple call in scripts
-function run(name) 
+function script(name) 
     tasker.run(name)
+end
+
+function shell(input)
+    os.execute(input)
 end`
 }

@@ -4,7 +4,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Release](https://img.shields.io/github/v/release/pt-main/tal)](https://github.com/pt-main/tal/releases)
 
-> tal - task lua
+> tal - Task Lua
 
 ```bash
 go install github.com/pt-main/tal/cmd/tal@latest
@@ -86,8 +86,8 @@ os.execute("go test .")
 
 -- @
 -- Запускается по умолчанию
-run("build")
-run("test")
+script("build")
+script("test")
 ```
 
 ---
@@ -95,7 +95,7 @@ run("test")
 ## Команды CLI
 
 ```bash
-tal run <args>    # парсит tasks.tal, выполняет dsl с аргументами
+tal run main.task.lua <args>    # парсит main.task.lua, выполняет dsl с аргументами
 tal update        # обновить или инициализировать .tal.pack принудительно
 ```
 
@@ -122,7 +122,11 @@ tal update        # обновить или инициализировать .ta
 - `changed_list` - таблица с путями изменённых файлов.
 - `tasker.add(deps, name, func)` - регистрация таска.
 - `tasker.run(name)` - выполнение таска.
-- `run(name)` - сокращение для `tasker.run`.
+- `script(name)` - сокращение для `tasker.run`.
+- `shell(string)` - сокращение `os.execute`.
+- `print_colored(string)` - цветной вывод (использует систему цветов из <code>[tap](https://github.com/pt-main/tap).color</code>).
+
+Когда tal используется из [`run`](https://github.com/pt-main/run) становится доступна дополнительная команда - `run(args_string)`, которая напрямую вызывает run, и парсит аргументы из строки на входе.
 
 **Важно**: Вы не можете использовать внешние Lua-библиотеки (интерпритатор lua в tal написан на [go](https://github.com/yuin/gopher-lua), и не зависит от системы и установленных lua библиотек).
 

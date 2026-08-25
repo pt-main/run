@@ -5,8 +5,13 @@ import (
 	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/pt-main/tap/color"
 	lua "github.com/yuin/gopher-lua"
 )
+
+type LuaFuncBuilder func(changedFiles, args []string) lua.LGFunction
+
+var GlobalFuncs = map[string]LuaFuncBuilder{}
 
 func NewTalLuaState(changedFiles, args []string) *lua.LState {
 	L := lua.NewState()
@@ -30,6 +35,11 @@ func NewTalLuaState(changedFiles, args []string) *lua.LState {
 		return 1
 	}))
 
+	L.SetGlobal("print_colored", L.NewFunction(func(L *lua.LState) int {
+		color.PrintColored(L.CheckString(1))
+		return 1
+	}))
+
 	L.SetGlobal("match_pattern", L.NewFunction(func(L *lua.LState) int {
 		pat := L.CheckString(1)
 		str := L.CheckString(2)
@@ -41,7 +51,15 @@ func NewTalLuaState(changedFiles, args []string) *lua.LState {
 		L.Push(lua.LBool(ok))
 		return 1
 	}))
+
+	for name, builder := range GlobalFuncs {
+		L.SetGlobal(name, L.NewFunction(builder(changedFiles, args)))
+	}
 	return L
+}
+
+func RegisterLuaFunc(name string, builder LuaFuncBuilder) {
+	GlobalFuncs[name] = builder
 }
 
 func makeRelativePaths(absPaths []string) []string {

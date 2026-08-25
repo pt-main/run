@@ -1,10 +1,10 @@
-# tal – incremental tasker with Lua and dependencies
+# tal - Incremental Tasker with Lua and Dependencies
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/tal.svg)](https://pkg.go.dev/github.com/pt-main/tal)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Release](https://img.shields.io/github/v/release/pt-main/tal)](https://github.com/pt-main/tal/releases)
 
-> tal - task lua
+> tal - Task Lua
 
 ```bash
 go install github.com/pt-main/tal/cmd/tal@latest
@@ -16,14 +16,14 @@ go install github.com/pt-main/tal/cmd/tal@latest
 
 ## Why tal?
 
-| Problem | tal solves |
-|---------|------------|
-| **Makefiles are hard to read and write** | Simple DSL with comments and Lua instead of Shell |
-| **Incrementality is broken** | SHA256 hashes instead of modification times |
-| **No way to call tasks from each other** | Tasks can be called via built‑in functions |
-| **File dependencies are cumbersome** | `#depends file1 file2` works out of the box |
+| Problem | How tal solves it |
+|---------|-------------------|
+| **Makefiles are hard to read and write** | A simple DSL with comments and Lua instead of Shell |
+| **Incremental builds work poorly** | SHA256 hashes instead of modification timestamps |
+| **No way to call tasks from one another** | Call tasks via a built-in function |
+| **Cumbersome file dependencies** | `#depends file1 file2` works out of the box |
 
-tal gives you **incrementality, simplicity, and Lua** – all in one tool.
+tal gives **incrementality, simplicity, and Lua** – all in one tool.
 
 ---
 
@@ -31,7 +31,7 @@ tal gives you **incrementality, simplicity, and Lua** – all in one tool.
 
 ### As a binary
 
-Download the [release](https://github.com/pt-main/tal/releases) for your OS/architecture, rename it, and put it in your `PATH`:
+Download the [release](https://github.com/pt-main/tal/releases) for your OS/architecture, rename it, and place it in your `PATH`:
 
 ```bash
 # Linux/macOS
@@ -39,7 +39,7 @@ chmod +x tal
 sudo mv tal /usr/local/bin/tal
 
 # Windows
-# Place tal.exe in a folder that is in your PATH
+# Put tal.exe in a folder that is in your PATH
 ```
 
 ### Via `go install`
@@ -48,24 +48,24 @@ sudo mv tal /usr/local/bin/tal
 go install github.com/pt-main/tal/cmd/tal@latest
 ```
 
-On the first run, `tal update` creates `.tal.pack` – a file containing hashes of all files in the current directory.
+On first run, `tal update` creates `.tal.pack` – a file containing hashes of all files in the current directory.
 
 ---
 
 ## Syntax
 
-The task file is written in plain Lua with annotations in comments, without breaking the Lua syntax.
+The task file is written in plain Lua with annotations in comments, without breaking the syntax.
 
 ### Basic constructs
 
 | Construct | Description |
 |-----------|-------------|
 | `-- @taskname` | Start of a task block |
-| `-- @` | Main block (run by default) |
+| `-- @` | Main block (runs by default) |
 | `-- @!` | Global block (runs before main and task registration) |
-| `-- #depends <glob-pattern...>` | Command – file dependency (checked by their hashes). File names are written as glob patterns |
+| `-- #depends <glob-name...>` | Command – declares file dependencies (checked by their hashes). File names are written in glob format |
 
-Any other code is treated as normal Lua code. The file must start with a normal or global block.
+Any other code is treated as plain Lua. The file must start with a global or main block.
 
 Example:
 
@@ -86,8 +86,8 @@ os.execute("go test .")
 
 -- @
 -- Runs by default
-run("build")
-run("test")
+script("build")
+script("test")
 ```
 
 ---
@@ -95,57 +95,61 @@ run("test")
 ## CLI Commands
 
 ```bash
-tal run <args>    # parses tasks.tal, executes the DSL with arguments
-tal update        # force‑update or initialise .tal.pack
+tal run main.task.lua <args>    # Parses main.task.lua, executes the DSL with arguments
+tal update        # Force update or initialize .tal.pack
 ```
 
-`tal update` is mandatory when running tal for the first time in a directory.
+`tal update` is mandatory on first use of tal in a directory.
 
 ---
 
-## How incrementality works
+## How Incrementality Works
 
-Incrementality is enabled by the `depends` command (`-- #depends ...`) and does not work without it.
+Incrementality is enabled by the `depends` command (`-- #depends ...`) and is disabled if absent.
 
 1. `tal` scans the current directory and computes SHA256 hashes for all files.
-2. Hashes are stored in `.tal.pack` (binary format, using [`pack`](https://github.com/pt-main/pack)).
-3. On the next run, `tal` compares hashes to detect changed files, and automatically updates the hashes.
-4. In the generated Lua script, the `changed_list` array contains the paths of changed files.
-5. The runtime checks each task's dependencies and only runs those where at least one dependent file has changed.
+2. The hashes are stored in `.tal.pack` (binary format, uses [`pack`](https://github.com/pt-main/pack)).
+3. On the next run, `tal` compares hashes, detects which files have changed, and automatically updates the hashes.
+4. In the generated Lua script, the array `changed_list` contains paths to the changed files.
+5. The runtime checks each task's dependencies and executes only those tasks for which at least one dependent file has changed.
 
 ---
 
-## Built‑in Lua runtime
+## Built-in Lua Runtime
 
-Each task is a Lua function that executes in an environment with access to:
+Each task is a Lua function executed in an environment that provides access to:
 
 - `changed_list` – a table with paths of changed files.
 - `tasker.add(deps, name, func)` – registers a task.
 - `tasker.run(name)` – executes a task.
-- `run(name)` – shorthand for `tasker.run`.
+- `script(name)` – shorthand for `tasker.run`.
+- `shell(string)` – shorthand for `os.execute`.
+- `print_colored(string)` – coloured output (uses the colour system from [`tap`](https://github.com/pt-main/tap).color).
 
-**Important**: You cannot use external Lua libraries (the Lua interpreter in tal is written in Go using [gopher‑lua](https://github.com/yuin/gopher-lua) and does not depend on system‑installed Lua libraries).
+When tal is used from [`run`](https://github.com/pt-main/run), an additional command becomes available – `run(args_string)`, which directly calls run and parses arguments from the input string.
+
+**Important**: You cannot use external Lua libraries (the Lua interpreter in tal is written in [Go](https://github.com/yuin/gopher-lua) and does not depend on the system or installed Lua libraries).
 
 ---
 
-## Project structure
+## Project Structure
 
 ```
 .
-├── tasks.lua          # task file (DSL)
-├── .tal.pack          # binary file with hashes (created automatically by tal update)
+├── tasks.lua          # Task file (DSL)
+├── .tal.pack          # Binary hash file (automatically created by tal update)
 └── ...
 ```
 
 ---
 
-## Comparison with alternatives
+## Comparison with Alternatives
 
 | Feature | tal | make | just | task |
 |---------|-----|------|------|------|
-| **Incrementality by hashes** | Yes | No | No | Yes |
+| **Hash‑based incrementality** | Yes | No | No | Yes |
 | **Scripting language** | Lua with annotations | Shell | Shell | Shell |
-| **Calling other tasks** | Yes | Yes | No | Yes |
+| **Call other tasks** | Yes | Yes | No | Yes |
 | **Ease of writing** | Easy | Hard | Easy | Medium |
 
 ---
@@ -156,4 +160,4 @@ Apache 2.0 – see [LICENSE](LICENSE) for details.
 
 ---
 
-By Pt, 2026 – written using `lc`, `tap`, `pack`.
+By Pt, 2026 – built with `lc`, `tap`, `pack`.

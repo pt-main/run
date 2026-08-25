@@ -3,12 +3,15 @@ package main
 import (
 	"fmt"
 
+	"github.com/mattn/go-shellwords"
 	"github.com/pt-main/run"
 	runlib "github.com/pt-main/run/run"
 	localmode "github.com/pt-main/run/run/localMode"
+	luaruntime "github.com/pt-main/run/tal/lua"
 	"github.com/pt-main/run/tal/runtime"
 	"github.com/pt-main/tap"
 	"github.com/pt-main/tycl/cli"
+	lua "github.com/yuin/gopher-lua"
 )
 
 func NewCli() *tap.Parser {
@@ -52,6 +55,25 @@ Use --force flag to replace script if it's already added with same name.`,
 		`Remove script from global config`,
 		[]string{"name"}, nil, false)
 
+	luaruntime.RegisterLuaFunc("run", func(changedFiles, args []string) lua.LGFunction {
+		return func(L *lua.LState) int {
+			input := L.OptString(1, "")
+			if input == "" {
+				L.Push(lua.LString("missing command string"))
+				return 1
+			}
+			parsed, err := shellwords.Parse(input)
+			if err != nil {
+				L.Push(lua.LString(err.Error()))
+				return 1
+			}
+			if err := p.Parse(parsed); err != nil {
+				L.Push(lua.LString(err.Error()))
+				return 2
+			}
+			return 1
+		}
+	})
 	p.AddSubcommand("tal", runtime.CreateCli())
 
 	p.AddCommand("-list", runlib.ListHandler,
