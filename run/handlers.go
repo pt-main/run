@@ -42,8 +42,8 @@ func AddHandler(p *tap.Parser, s []string) error {
 		return err
 	}
 	addScript := true
-	if strings.HasSuffix(s[0], ".tal.lua") {
-		ext = ".tal.lua"
+	if strings.HasSuffix(s[0], ".task.lua") {
+		ext = ".task.lua"
 		runScript = TalRunScriptTemplate(s[0])
 	}
 	switch ext {
