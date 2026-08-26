@@ -156,7 +156,6 @@ strict {
         script: string,      // Wrapper file name (matches the Lua script name inside run/scripts, without extension)
         description: string, // Description
         tags: strings,       // Tags
-        source: string,      // Original script source path
         ext: string,         // Extension (.py, .sh, .bat, .lua)
     },
 }
@@ -171,7 +170,6 @@ The config is automatically populated by the `run` CLI. After the first run, it 
             name: string = "test",
             script: string = "test",
             description: string = "[?BBK]Simple script for functions test[?RT]",
-            source: string = "",
             ext: string = "",
             tags: strings = ["__test"],
         }

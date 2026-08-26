@@ -157,7 +157,6 @@ strict {
         script: string,      // Имя файла обёртки (совпадает с названием lua скрипта внутри run/scripts, без расширения)
         description: string, // Описание
         tags: strings,       // Теги
-        source: string,      // Исходник оригинального скрипта
         ext: string,         // Расширение (.py, .sh, .bat, .lua)
     },
 }
@@ -172,7 +171,6 @@ strict {
             name: string = "test",
             script: string = "test",
             description: string = "[?BBK]Simple script for functions test[?RT]",
-            source: string = "",
             ext: string = "",
             tags: strings = ["__test"],
         }

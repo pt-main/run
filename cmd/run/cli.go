@@ -21,7 +21,7 @@ func NewCli() *tap.Parser {
 [?BE]╰───────[?RT]
 
 [?GN]Usage: [?RT]
-  [?BYW]Type: [?BBK]run [--<lm|locamode>] <cmd> <args...>
+  [?BYW]Type: [?BBK]run [--<lm|locamode>] [--no_color] <cmd> <args...>
 
   [?BBK]run <cmd> <args...> [?YW]- execute run command (which described in help)[?RT]
     [?BYW]Example: [?BBK]run -add script.py script1[?RT]
