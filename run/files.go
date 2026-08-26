@@ -59,12 +59,11 @@ func CheckConfigDir() (bool, error) {
 	return info.IsDir(), nil
 }
 
-func NewScriptConfig(name, script, description, source, ext string, tags []string) *shared.Config {
+func NewScriptConfig(name, script, description, ext string, tags []string) *shared.Config {
 	conf := shared.NewNilConfig()
 	conf.StringV["name"] = name
 	conf.StringV["script"] = script
 	conf.StringV["description"] = description
-	conf.StringV["source"] = source
 	conf.StringV["ext"] = ext
 	if tags == nil {
 		tags = []string{}

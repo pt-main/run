@@ -82,10 +82,10 @@ script("test")
 ## Команды CLI
 
 ```bash
-tal run <file> <args>             # парсит <file>, выполняет dsl с аргументами использую .tal.pack (он обязателен)
-tal update                        # обновить или инициализировать .tal.pack принудительно
-tal init                          # инициализировать проект (создает .tal.pack и main.task.lua)
-tal list <file>                   # показать все скрипты в файле
+tal run <file> <args> # парсит <file>, выполняет dsl с аргументами использую .tal.pack (он обязателен)
+tal update            # обновить или инициализировать .tal.pack принудительно
+tal init              # инициализировать проект (создает .tal.pack и main.task.lua)
+tal list <file>       # показать все скрипты в файле
 
 # чтобы получить больше информации -
 tal help

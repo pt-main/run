@@ -64,7 +64,7 @@ func AddHandler(p *tap.Parser, s []string) error {
 	if len(s) > 2 {
 		docs = s[2]
 	}
-	conf.InnerArrV["scripts"] = append(conf.InnerArrV["scripts"], NewScriptConfig(s[1], s[1], docs, script, ext, nil))
+	conf.InnerArrV["scripts"] = append(conf.InnerArrV["scripts"], NewScriptConfig(s[1], s[1], docs, ext, nil))
 	if err := NewRunScript(s[1], runScript); err != nil {
 		return err
 	}

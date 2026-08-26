@@ -7,7 +7,6 @@ strict {
 		script: string,
 		description: string,
 		tags: strings,
-		source: string,
 		ext: string,
 	},
 }

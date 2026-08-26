@@ -66,7 +66,7 @@ go install github.com/pt-main/run@latest
 ```
 
 **On first run**, run will create the structure in `~/run/`:
-- `config.tycl` – config (TYCL) with the script list.
+- `config.tycl` – config with the script list.
 - `scripts/` – Lua wrappers for execution.
 - `base/` – original script files.
 
@@ -128,7 +128,7 @@ run automatically generates **Lua wrappers** that call the original scripts with
 | `.sh` | Bash | Executes via `bash` |
 | `.bat` | Batch | Executes via `cmd /c` |
 | `.lua` | Lua | Executed directly (no wrapper) |
-| `.tal.lua` | Task Lua (Tal) | Executes via `run tal` |
+| `.task.lua` | Task Lua (Tal) | Executes via `run tal run` |
 
 ---
 
