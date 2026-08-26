@@ -8,7 +8,7 @@
 # run installation
 go install github.com/pt-main/run/cmd/run@latest
 # tal installation
-go install github.com/pt-main/run/tal/cmd/tal@latest
+go install github.com/pt-main/run/cmd/tal@latest
 ```
 
 **run** is a script manager that lets you add, remove, and run scripts in various languages with a single command. Scripts are stored in `~/run/` and are accessible from any folder.

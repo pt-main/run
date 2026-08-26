@@ -7,7 +7,7 @@
 > tal - Task Lua
 
 ```bash
-go install github.com/pt-main/run/tal/cmd/tal@latest
+go install github.com/pt-main/run/cmd/tal@latest
 ```
 
 **tal** - это простой современный таскер с lua в роли языка скриптования. Он позволяет описывать задачи на обычном lua с аннотациями, отслеживать изменения файлов и запускать только то, что действительно изменилось.

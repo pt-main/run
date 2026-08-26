@@ -7,7 +7,7 @@
 > tal – Task Lua
 
 ```bash
-go install github.com/pt-main/run/tal/cmd/tal@latest
+go install github.com/pt-main/run/cmd/tal@latest
 ```
 
 **tal** is a simple, modern task runner that uses Lua as its scripting language. It lets you describe tasks in plain Lua with annotations, track file changes, and run only what has actually changed.
