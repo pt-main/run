@@ -6,17 +6,17 @@ import (
 
 	run "github.com/pt-main/run/run"
 	localmode "github.com/pt-main/run/run/localMode"
+	"github.com/pt-main/tap"
 )
 
-func main() {
-	args := os.Args
+func Process(cli *tap.Parser, args []string) error {
 	lm := localmode.IsLocalmode()
 	temp := lm
 
-	if len(args) > 1 {
-		if args[1] == "--localmode" || args[1] == "--lm" {
+	if len(args) > 0 {
+		if args[0] == "--localmode" || args[0] == "--lm" {
 			temp = true
-		} else if args[1] == "--globalmode" || args[1] == "--gm" {
+		} else if args[0] == "--globalmode" || args[0] == "--gm" {
 			temp = false
 		}
 	}
@@ -24,22 +24,29 @@ func main() {
 
 	ok, err := run.CheckConfigDir()
 	if err != nil {
-		fmt.Println("Can't check installation:", err)
-		return
+		return fmt.Errorf("Can't check installation: %v", err)
 	}
 	if !ok {
 		if err := run.InstallConfigDir(); err != nil {
-			fmt.Println("Can't make run dir:", err)
-			return
+			return fmt.Errorf("Can't make run dir: %v", err)
 		}
 	}
 
-	err = NewCli().Main()
+	err = cli.Parse(args)
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
 	if localmode.IsLocalmode() == temp {
 		localmode.Set(lm)
+	}
+	return nil
+}
+
+func main() {
+	cli := NewCli()
+	err := Process(cli, os.Args[1:])
+	if err != nil {
+		fmt.Println(err)
 	}
 }

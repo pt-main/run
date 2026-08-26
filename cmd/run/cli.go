@@ -15,6 +15,9 @@ import (
 )
 
 func NewCli() *tap.Parser {
+	var lp *tap.Parser
+	conf := tap.DefaultParserConfig()
+	conf.BuiltinVerboseDebug = true
 	p := tap.NewParser("run", `[?BE]╭─────── [?BRD]Run[?RT]
 [?BE]⎬─ [?RT]Simple and powerfull script manager
 [?BE]│  [?RT]By [?UE]Pt[?RT], only [?BD]humanmade[?RT].
@@ -33,7 +36,7 @@ func NewCli() *tap.Parser {
     [?BYW]Example: [?BBK]run script1 --os='linux'[?RT]
   
   [?BBK]run -r --tagged="<tag1>;<tag2>;<...>" <args...>[?YW] - run script with any tag[?RT]
-    [?BYW]Example: [?BBK]run -r --tagged="deploy" --os='linux'[?RT]`, []string{"-h", "help"}, tap.DefaultParserConfig())
+    [?BYW]Example: [?BBK]run -r --tagged="deploy" --os='linux'[?RT]`, []string{"-h", "help"}, conf)
 
 	p.AddCommand("tycl", func(p *tap.Parser, s []string) error {
 		args, err := runlib.ProcessShell(s[0])
@@ -67,7 +70,10 @@ Use --force flag to replace script if it's already added with same name.`,
 				L.Push(lua.LString(err.Error()))
 				return 1
 			}
-			if err := p.Parse(parsed); err != nil {
+			if lp == nil {
+				lp = NewCli()
+			}
+			if err := Process(lp, parsed); err != nil {
 				L.Push(lua.LString(err.Error()))
 				return 2
 			}

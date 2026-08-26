@@ -1,10 +1,8 @@
 package runtime
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/iancoleman/orderedmap"
@@ -83,8 +81,8 @@ accepts arguments. This is a quick way to start a new project.
 }
 
 func InitHandler(p *tap.Parser, s []string) error {
-	color.PrintlnColored("Update err: %v", Update())
-	color.PrintlnColored("File creating err: %v", write("main.task.lua", []byte(`-- @
+	color.PrintlnColored("Update err: %v", core.Update())
+	color.PrintlnColored("File creating err: %v", core.Write("main.task.lua", []byte(`-- @
 if #get_args() > 0 then
     script(get_args()[1]) 
 end`)))
@@ -104,7 +102,7 @@ func center(s string, width int) string {
 
 func ListHandler(p *tap.Parser, s []string) error {
 	for _, fileName := range s {
-		file, err := OpenF(fileName)
+		file, err := core.OpenF(fileName)
 		if err != nil {
 			return err
 		}
@@ -135,15 +133,12 @@ func ListHandler(p *tap.Parser, s []string) error {
 }
 
 func UpdateHandler(p *tap.Parser, s []string) error {
-	return Update()
+	return core.Update()
 }
 
 func RunHandler(p *tap.Parser, s []string) error {
 	ch, err := GetChanges()
 	if err != nil {
-		return err
-	}
-	if err := Update(); err != nil {
 		return err
 	}
 	args := []string{}
@@ -156,7 +151,7 @@ func RunHandler(p *tap.Parser, s []string) error {
 		}
 	}
 	ls := lua.NewTalLuaState(ch, args)
-	file, err := OpenF(s[0])
+	file, err := core.OpenF(s[0])
 	if err != nil {
 		return err
 	}
@@ -170,7 +165,7 @@ func RunHandler(p *tap.Parser, s []string) error {
 }
 
 func GetSavedFile() (*orderedmap.OrderedMap, error) {
-	file, err := open(shared.TalFile)
+	file, err := core.Open(shared.TalFile)
 	if err != nil {
 		return nil, err
 	}
@@ -183,51 +178,4 @@ func GetChanges() ([]string, error) {
 		return nil, err
 	}
 	return core.Changes(w, ".")
-}
-
-func Update() error {
-	st, err := core.SaveState(".")
-	if err != nil {
-		return err
-	}
-	file, err := core.StateAsPackCore(st)
-	if err != nil {
-		return err
-	}
-	return write(shared.TalFile, file)
-}
-
-func OpenF(file string) (string, error) {
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return "", fmt.Errorf("Open: %v", err)
-	}
-	return string(data), nil
-}
-
-func open(file string) ([]byte, error) {
-	data, err := os.ReadFile(file)
-	if err != nil {
-		return nil, fmt.Errorf("Open: %v", err)
-	}
-	return data, nil
-}
-
-func write(filename string, data []byte) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("Write: %v", err)
-	}
-	defer file.Close()
-
-	writer := bufio.NewWriter(file)
-	_, err = writer.Write(data)
-	if err != nil {
-		return fmt.Errorf("Write: %v", err)
-	}
-	err = writer.Flush()
-	if err != nil {
-		return fmt.Errorf("Write: %v", err)
-	}
-	return nil
 }

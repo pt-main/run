@@ -75,7 +75,7 @@ go install github.com/pt-main/run@latest
 ## Syntax
 
 ```bash
-run [--<lm/localmode>/<gm/globalmode>] <cmd> <args...>
+run [--<lm/localmode>/--<gm/globalmode>] <cmd> <args...>
 ```
 
 ### Commands

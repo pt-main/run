@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/pt-main/run/tal/core"
 	"github.com/pt-main/tap/color"
 	lua "github.com/yuin/gopher-lua"
 )
@@ -32,6 +33,15 @@ func NewTalLuaState(changedFiles, args []string) *lua.LState {
 			tbl.RawSetInt(i+1, lua.LString(p))
 		}
 		L.Push(tbl)
+		return 1
+	}))
+
+	L.SetGlobal("update", L.NewFunction(func(L *lua.LState) int {
+		err := core.Update()
+		if err != nil {
+			L.Push(lua.LString(err.Error()))
+			return 2
+		}
 		return 1
 	}))
 

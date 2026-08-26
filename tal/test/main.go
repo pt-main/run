@@ -16,8 +16,7 @@ func main() {
 print("start building...")
 
 -- @
-run("build")
-`
+run("build")`
 	proc, err := lang.Process(code)
 	fmt.Println(core.GetRealError(err), proc)
 

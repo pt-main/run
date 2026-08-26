@@ -75,6 +75,8 @@ os.execute("go test .")
 -- Runs by default
 script("build")
 script("test")
+
+update() -- update .tal.pack, all changes are processed confirmation
 ```
 
 ---
@@ -117,6 +119,7 @@ Each task is a Lua function executed in an environment that provides access to t
 - `script(name)` – shorthand for `tasker.run`.
 - `shell(string)` – shorthand for `os.execute`.
 - `print_colored(string)` – coloured output (uses the colour system from [`tap`](https://github.com/pt-main/tap).color).
+- `update()` - update .tal.pack.
 
 When tal is used from `run`, an additional function becomes available – `run(args_string)`, which directly calls run and parses arguments from the input string.
 

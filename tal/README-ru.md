@@ -75,6 +75,8 @@ os.execute("go test .")
 -- Запускается по умолчанию
 script("build")
 script("test")
+
+update() -- обновление .tal.pack, подтверждает что все изменения обработаны
 ```
 
 ---
@@ -117,6 +119,7 @@ tal help
 - `script(name)` - сокращение для `tasker.run`.
 - `shell(string)` - сокращение `os.execute`.
 - `print_colored(string)` - цветной вывод (использует систему цветов из <code>[tap](https://github.com/pt-main/tap).color</code>).
+- `update()` - обновить .tal.pack.
 
 Когда tal используется из  `run` становится доступна дополнительная функция - `run(args_string)`, которая напрямую вызывает run, и парсит аргументы из строки на входе.
 
