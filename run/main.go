@@ -28,6 +28,12 @@ func GetCfg() (*shared.Config, error) {
 	return cfg, nil
 }
 
+var GlobalFuncs = map[string]lua.LGFunction{}
+
+func RegisterLuaFunc(name string, fun lua.LGFunction) {
+	GlobalFuncs[name] = fun
+}
+
 func NewLuaState(args []string) *lua.LState {
 	L := lua.NewState()
 
@@ -130,6 +136,10 @@ func NewLuaState(args []string) *lua.LState {
 		wg.Wait()
 		return 0
 	}))
+
+	for name, fun := range GlobalFuncs {
+		L.SetGlobal(name, L.NewFunction(fun))
+	}
 
 	return L
 }

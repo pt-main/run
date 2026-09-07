@@ -15,12 +15,12 @@ local function escape(arg)
     return arg
 end
 
-local cmd = "run tal run " .. escape(task_name)
+local cmd = "tal run " .. escape(task_name)
 for _, a in ipairs(args) do
     cmd = cmd .. " " .. escape(a)
 end
 
-local result = os.execute(cmd)
+local result = cli(cmd)
 os.exit(result or 0)`, name)
 }
 

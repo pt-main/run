@@ -2,6 +2,8 @@ package runlib
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -13,70 +15,78 @@ import (
 	"github.com/pt-main/tycl/utils"
 )
 
-func AddHandler(p *tap.Parser, s []string) error {
-	ext := filepath.Ext(s[0])
-	fpsplit := strings.Split(s[0], "/")
-	file := fpsplit[0]
-	if len(fpsplit) > 0 {
-		file = fpsplit[len(fpsplit)-1]
-	}
-	runScript := ""
+func AddScript(script, rawScriptName, scriptName, docs string, force bool) error {
 	conf, err := GetCfg()
 	if err != nil {
 		return err
 	}
-	_, force := p.Flags["force"]
+
+	rawScriptName = scriptName + "_" + strings.ReplaceAll(rawScriptName, "/", "__")
+
+	runScript := ""
+
 	newScripts := []*shared.Config{}
 	for _, script := range conf.InnerArrV["scripts"] {
 		name := script.StringV["script"]
-		if name == s[1] && !force {
+		if name == scriptName && !force {
 			return fmt.Errorf("Can't add script: script already added. Use --force to replace script.")
 		}
-		if name != s[1] {
+		if name != scriptName {
 			newScripts = append(newScripts, script)
 		}
 	}
 	conf.InnerArrV["scripts"] = newScripts
-	script, err := utils.OpenF(s[0])
-	if err != nil {
-		return err
-	}
 	addScript := true
-	if strings.HasSuffix(s[0], ".task.lua") {
+
+	ext := filepath.Ext(rawScriptName)
+	if strings.HasSuffix(rawScriptName, ".task.lua") {
 		ext = ".task.lua"
-		runScript = TalRunScriptTemplate(s[0])
+		runScript = TalRunScriptTemplate(rawScriptName)
 	}
 	switch ext {
 	case ".py":
-		runScript = PythonRunScriptTemplate(s[0])
+		runScript = PythonRunScriptTemplate(rawScriptName)
 	case ".sh":
-		runScript = BashRunScriptTemplate(s[0])
+		runScript = BashRunScriptTemplate(rawScriptName)
 	case ".bat":
-		runScript = BatRunScriptTemplate(s[0])
+		runScript = BatRunScriptTemplate(rawScriptName)
+	case ".task.lua":
+		runScript = TalRunScriptTemplate(rawScriptName)
 	case ".lua":
 		runScript = script
 		addScript = false
-	case ".tal.lua":
 	default:
 		return fmt.Errorf("Unsupportable file extension: %v", ext)
 	}
-	docs := ""
-	if len(s) > 2 {
-		docs = s[2]
-	}
-	conf.InnerArrV["scripts"] = append(conf.InnerArrV["scripts"], NewScriptConfig(s[1], s[1], docs, ext, nil))
-	if err := NewRunScript(s[1], runScript); err != nil {
+	conf.InnerArrV["scripts"] = append(conf.InnerArrV["scripts"], NewScriptConfig(scriptName, scriptName, docs, ext, nil))
+	if err := NewRunScript(scriptName, runScript); err != nil {
 		return err
 	}
 	if err := UpdateConfig(conf); err != nil {
 		return err
 	}
 	if addScript {
+		fpsplit := strings.Split(rawScriptName, "/")
+		file := fpsplit[0]
 		if err := NewScript(file, script); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func AddHandler(p *tap.Parser, s []string) error {
+	_, force := p.Flags["force"]
+
+	script, err := utils.OpenF(s[0])
+	if err != nil {
+		return err
+	}
+	docs := ""
+	if len(s) > 2 {
+		docs = s[2]
+	}
+	return AddScript(script, s[0], s[1], docs, force)
 }
 
 func RemoveHandler(p *tap.Parser, s []string) error {
@@ -260,4 +270,113 @@ func TagHahdler(p *tap.Parser, s []string) error {
 		}
 	}
 	return UpdateConfig(cfg)
+}
+
+func downloadScript(url string) (content string, fileName string, err error) {
+	if strings.Contains(url, "github.com/") {
+		rawURL, fname, err := parseGitHubURL(url)
+		if err != nil {
+			return "", "", err
+		}
+		url = rawURL
+		fileName = fname
+	} else {
+
+		fileName = filepath.Base(url)
+		if idx := strings.Index(fileName, "?"); idx != -1 {
+			fileName = fileName[:idx]
+		}
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return "", "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", "", fmt.Errorf("HTTP error: %s", resp.Status)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", err
+	}
+	return string(data), fileName, nil
+}
+
+func parseGitHubURL(rawURL string) (rawContentURL string, fileName string, err error) {
+
+	u := rawURL
+	if strings.HasPrefix(u, "https://") {
+		u = strings.TrimPrefix(u, "https://")
+	} else if strings.HasPrefix(u, "http://") {
+		u = strings.TrimPrefix(u, "http://")
+	}
+
+	if !strings.HasPrefix(u, "github.com/") {
+		return "", "", fmt.Errorf("not a GitHub URL")
+	}
+	u = strings.TrimPrefix(u, "github.com/")
+
+	parts := strings.SplitN(u, "@", 2)
+	if len(parts) == 2 {
+		repo := parts[0]
+		rest := parts[1]
+		slashIdx := strings.Index(rest, "/")
+		if slashIdx == -1 {
+			return "", "", fmt.Errorf("missing path after ref")
+		}
+		ref := rest[:slashIdx]
+		path := rest[slashIdx+1:]
+		rawContentURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s", repo, ref, path)
+		fileName = filepath.Base(path)
+		return rawContentURL, fileName, nil
+	}
+
+	idx := strings.Index(u, "/blob/")
+	if idx == -1 {
+		return "", "", fmt.Errorf("invalid GitHub URL: missing '@' or '/blob/'")
+	}
+	repoPart := u[:idx]
+	rest := u[idx+len("/blob/"):]
+	slashIdx := strings.Index(rest, "/")
+	if slashIdx == -1 {
+		return "", "", fmt.Errorf("invalid blob URL: missing branch/path")
+	}
+	branch := rest[:slashIdx]
+	path := rest[slashIdx+1:]
+	rawContentURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s", repoPart, branch, path)
+	fileName = filepath.Base(path)
+	return rawContentURL, fileName, nil
+}
+
+func InstallHandler(p *tap.Parser, s []string) error {
+	if len(s) < 1 {
+		return fmt.Errorf("need at least URL")
+	}
+
+	url := s[0]
+	scriptName := ""
+	docs := ""
+
+	if len(s) > 1 {
+		scriptName = s[1]
+	}
+	if len(s) > 2 {
+		docs = s[2]
+	}
+
+	content, rawName, err := downloadScript(url)
+	if err != nil {
+		return err
+	}
+
+	if scriptName == "" {
+		ext := filepath.Ext(rawName)
+		scriptName = strings.TrimSuffix(rawName, ext)
+	}
+
+	_, force := p.Flags["force"]
+	return AddScript(content, rawName, scriptName, docs, force)
 }
