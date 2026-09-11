@@ -7,6 +7,7 @@ import (
 	"github.com/pt-main/run"
 	runlib "github.com/pt-main/run/run"
 	localmode "github.com/pt-main/run/run/localMode"
+	"github.com/pt-main/run/tal"
 	luaruntime "github.com/pt-main/run/tal/lua"
 	"github.com/pt-main/run/tal/runtime"
 	"github.com/pt-main/tap"
@@ -50,17 +51,20 @@ func NewCli() *tap.Parser {
 		[]string{"path", "name"}, []string{"description"}, false)
 
 	p.AddCommand("-install", runlib.InstallHandler,
-		`[?GN]Download and install a script from a URL.[?RT]
+		`[?GN]Download and install a script from a any URL.[?RT]
 [?BBK]Supported URLs:[?RT]
-  - Raw file URLs ([?BBK]https://raw.githubusercontent.com/...)[?RT]
-  - GitHub blob URLs ([?BBK]github.com/user/repo/blob/branch/path/script.py)[?RT]
-  - GitHub simpler URLs ([?BBK]github.com/user/repo@branch/path/script.py)[?RT]
+  - Raw file URLs [?BBK](https://raw.githubusercontent.com/...)[?RT]
+  - GitHub blob URLs [?BBK](github.com/user/repo/blob/branch/path/script.py)[?RT]
+  - GitHub simpler URLs [?BBK](github.com/user/repo@branch/path/script.py)[?RT]
+  - Runing installation script [?BBK](github.com/user/repo@branch/path/run.task.lua)[?RT]
 [?YW]Flags:[?RT]
-  [?GN]--force[?RT]    Replace existing script with the same name
+  [?GN]--force[?RT]        Replace existing script with the same name
+  [?GN]--args='...'[?RT]   Pass args to run script
 [?YW]Examples:[?RT]
   [?BBK]run -install https://raw.githubusercontent.com/user/repo/main/deploy.py[?RT]
-  [?BBK]run -install github.com/user/repo@branch/script.py myscript[?RT]`,
-		[]string{"url", "name"}, []string{"description"}, false)
+  [?BBK]run -install github.com/user/repo@branch/script.py myscript[?RT]
+  [?BBK]run -install github.com/user/repo@branch/run.task.lua`,
+		[]string{"url"}, []string{"name", "description"}, false)
 
 	p.AddCommand("-remove", runlib.RemoveHandler,
 		`[?GN]Remove a script from the configuration.[?RT]
@@ -118,14 +122,12 @@ func NewCli() *tap.Parser {
 		[]string{"script"}, []string{"tag"}, true)
 
 	p.AddCommand("-version", func(p *tap.Parser, s []string) error {
-		fmt.Println("run v" + run.Version + ", by Pt, Apache 2.0 licence")
+		fmt.Println("run v" + run.Version)
+		fmt.Println("tal v" + tal.Version)
+		fmt.Println("humanmade, by Pt, Apache 2.0 licence")
 		return nil
 	},
-		`[?GN]Show version and license information.[?RT]
-[?BBK]Usage:[?RT]
-  [?BBK]run -version[?RT]
-[?YW]Example:[?RT]
-  [?BBK]run -version[?RT]`, nil, nil, false)
+		`[?GN]Show version and license information.[?RT]`, nil, nil, false)
 
 	p.AddCommand("-localmode", func(p *tap.Parser, s []string) error {
 		if len(s) == 0 {

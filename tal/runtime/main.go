@@ -7,10 +7,9 @@ import (
 
 	"github.com/iancoleman/orderedmap"
 	lccore "github.com/pt-main/lc/engine/core"
+	"github.com/pt-main/run/tal"
 	"github.com/pt-main/run/tal/core"
-	"github.com/pt-main/run/tal/generation"
 	"github.com/pt-main/run/tal/lang"
-	"github.com/pt-main/run/tal/lua"
 	"github.com/pt-main/run/tal/shared"
 	"github.com/pt-main/tap"
 	"github.com/pt-main/tap/color"
@@ -150,18 +149,8 @@ func RunHandler(p *tap.Parser, s []string) error {
 			args = append(args, arg)
 		}
 	}
-	ls := lua.NewTalLuaState(ch, args)
 	file, err := core.OpenF(s[0])
-	if err != nil {
-		return err
-	}
-	var err_ lccore.ErrorInterface
-	processed, err_ := lang.Process(file)
-	if err_ != nil {
-		return errors.New(lang.ErrFmt(err_))
-	}
-	generated, err := generation.GenerateCode(processed)
-	return ls.DoString(generated)
+	return tal.Process(ch, args, file)
 }
 
 func GetSavedFile() (*orderedmap.OrderedMap, error) {
