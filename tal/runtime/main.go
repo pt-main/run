@@ -58,7 +58,12 @@ the file name are passed directly to the Lua script via get_args()
 and are not interpreted by the CLI.
 
 [?BBE]Usage:[?RT]
-  [?BBK]tal run <file> [args...][?RT]
+  [?BBK]tal run <file> [args...] [--deps='dep1;dep2'][?RT]
+
+[?BBE]Flag [?BBK]--deps[?RT]
+  [?BBK]Used to pass dependencies for the [?GN]--#depends[?BBK] annotation. 
+  [?BBK]If this flag is not provided, modified files are specified 
+  [?BBK]as dependencies (requires the presence of [?YW].tal.pack[?BBK]).
 
 [?BBE]Examples:[?RT]
   [?BBK]tal run main.task.lua[?RT]           # run the script (main block or default)
@@ -135,10 +140,15 @@ func UpdateHandler(p *tap.Parser, s []string) error {
 	return core.Update()
 }
 
-func RunHandler(p *tap.Parser, s []string) error {
-	ch, err := GetChanges()
-	if err != nil {
-		return err
+func RunHandler(p *tap.Parser, s []string) (err error) {
+	ch := []string{}
+	if deps, hasDeps := p.Flags["deps"]; hasDeps {
+		ch = strings.Split(deps, ";")
+	} else {
+		ch, err = GetChanges()
+		if err != nil {
+			return
+		}
 	}
 	args := []string{}
 	skippedName := false

@@ -2,10 +2,11 @@ package runlib
 
 import "fmt"
 
-func TalRunScriptTemplate(name string) string {
+func TalRunScriptTemplate(name string, depsEnabled bool) string {
 	return fmt.Sprintf(`-- === CONFIGURATION ===
 local task_name = script_path("%s")
 local args = get_args()
+local deps_enabled = %v
 -- =====================
 
 local function escape(arg)
@@ -15,13 +16,17 @@ local function escape(arg)
     return arg
 end
 
-local cmd = "tal run " .. escape(task_name)
+local cmd = "tal run "
+if deps_enabled then
+    cmd = cmd .. "--deps="" "
+end
+cmd = cmd .. escape(task_name)
 for _, a in ipairs(args) do
     cmd = cmd .. " " .. escape(a)
 end
 
 local result = cli(cmd)
-os.exit(result or 0)`, name)
+os.exit(result or 0)`, name, depsEnabled)
 }
 
 func PythonRunScriptTemplate(name string) string {

@@ -94,7 +94,7 @@ func NewCli() *tap.Parser {
 
 	p.AddCommand(tap.DEFAULT_CMD,
 		runlib.MakeRunHandler(false),
-		`[?GN]Run a script by name (shortcut when name doesn't conflict with commands).[?RT]
+		`[?GN]Run a script by name (works when name doesn't conflict with commands).[?RT]
 
 [?BBK]Usage:[?RT]
   [?BBK]run <name> [args...][?RT]
@@ -105,20 +105,12 @@ func NewCli() *tap.Parser {
 
 	p.AddCommand("-tag",
 		runlib.TagHahdler,
-		`[?GN]Add tags to a script.[?RT]
+		`[?GN]Add/remove tags annotations for a script.[?RT]
 [?BBK]Usage:[?RT]
   [?BBK]run -tag <name> <tags...>[?RT]
+  Use tag names with '!' prefix to delete tags
 [?YW]Example:[?RT]
   [?BBK]run -tag deploy prod staging[?RT]`,
-		[]string{"script"}, []string{"tag"}, true)
-
-	p.AddCommand("-rm-tag",
-		runlib.RmTagHahdler,
-		`[?GN]Remove tags from a script.[?RT]
-[?BBK]Usage:[?RT]
-  [?BBK]run -rm-tag <name> <tags...>[?RT]
-[?YW]Example:[?RT]
-  [?BBK]run -rm-tag deploy staging[?RT]`,
 		[]string{"script"}, []string{"tag"}, true)
 
 	p.AddCommand("-version", func(p *tap.Parser, s []string) error {

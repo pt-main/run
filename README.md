@@ -82,8 +82,7 @@ go install github.com/pt-main/run@latest
 | `-list` | Show the list of scripts | `run -list` |
 | `-install <url> [name] [description] [--force] [--args="..."]` | Install a script from an external source, or run a tal script for installation | |
 | `<name> [args...]` | Run a script (if the name does not match a command) | `run mypy arg1` |
-| `-tag <name> <tags...>` | Add tags | `run -tag mypy deploy prod` |
-| `-rm-tag <name> <tags...>` | Remove tags | `run -rm-tag mypy prod` |
+| `-tag <name> <tags...>` | Add/remove tags. Use the `!` prefix for a tag to remove it. | `run -tag mypy deploy prod` |
 | `-localmode [true/false]` | Enable/disable local mode, show the current script launch state | `run -localmode true` |
 | `-r <name> [args...] [--tagged='...']` | Run a script | `run -r mypy arg1 arg2` |
 | `-r --tagged="tag1;tag2;..."` | Run scripts with any of the tags | `run -r --tagged="deploy;test"` |

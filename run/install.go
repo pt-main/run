@@ -128,7 +128,7 @@ func InstallHandler(p *tap.Parser, s []string) error {
 				return fmt.Errorf("Parsing args: %v", err)
 			}
 		}
-		fmt.Println(content)
+
 		err := tal.Process([]string{}, args, content)
 		if err != nil {
 			return err

@@ -2,17 +2,15 @@ package runlib
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
-	"sync"
-	"sync/atomic"
+	"strings"
+	"text/template"
 
 	"github.com/pt-main/lc/engine/core"
 	"github.com/pt-main/tycl"
 	"github.com/pt-main/tycl/format"
 	"github.com/pt-main/tycl/shared"
 	"github.com/pt-main/tycl/utils"
-	lua "github.com/yuin/gopher-lua"
 )
 
 func GetCfg() (*shared.Config, error) {
@@ -28,118 +26,119 @@ func GetCfg() (*shared.Config, error) {
 	return cfg, nil
 }
 
-var GlobalFuncs = map[string]lua.LGFunction{}
-
-func RegisterLuaFunc(name string, fun lua.LGFunction) {
-	GlobalFuncs[name] = fun
-}
-
-func NewLuaState(args []string) *lua.LState {
-	L := lua.NewState()
-
-	L.SetGlobal("script_path", L.NewFunction(func(L *lua.LState) int {
-		name := L.CheckString(1)
-		path := filepath.Join(ConfigDirBasePath(), name)
-		L.Push(lua.LString(path))
-		return 1
-	}))
-
-	L.SetGlobal("get_arg", L.NewFunction(func(L *lua.LState) int {
-		idx := L.CheckInt(1)
-		if idx < 1 || idx > len(args) {
-			L.Push(lua.LNil)
-		} else {
-			L.Push(lua.LString(args[idx-1]))
-		}
-		return 1
-	}))
-
-	L.SetGlobal("get_args", L.NewFunction(func(L *lua.LState) int {
-		tbl := L.NewTable()
-		for i, arg := range args {
-			tbl.RawSetInt(i+1, lua.LString(arg))
-		}
-		L.Push(tbl)
-		return 1
-	}))
-
-	L.SetGlobal("run_script", L.NewFunction(func(L *lua.LState) int {
-		name := L.CheckString(1)
-		var scriptArgs []string
-		top := L.GetTop()
-		for i := 2; i <= top; i++ {
-			arg := L.Get(i)
-			if str, ok := arg.(lua.LString); ok {
-				scriptArgs = append(scriptArgs, string(str))
-			} else {
-				scriptArgs = append(scriptArgs, L.ToStringMeta(arg).String())
-			}
-		}
-
-		cfg, err := GetCfg()
-		if err != nil {
-			L.RaiseError("failed to load config: %v", err)
-			return 0
-		}
-
-		if err := RunScript(cfg, name, scriptArgs); err != nil {
-			L.RaiseError("failed to run script %q: %v", name, err)
-			return 0
-		}
-		return 0
-	}))
-
-	var (
-		activeScripts int32
-		wg            sync.WaitGroup
-	)
-
-	L.SetGlobal("run_script_parallel", L.NewFunction(func(L *lua.LState) int {
-		name := L.CheckString(1)
-		var scriptArgs []string
-		top := L.GetTop()
-		for i := 2; i <= top; i++ {
-			arg := L.Get(i)
-			if str, ok := arg.(lua.LString); ok {
-				scriptArgs = append(scriptArgs, string(str))
-			} else {
-				scriptArgs = append(scriptArgs, L.ToStringMeta(arg).String())
-			}
-		}
-
-		cfg, err := GetCfg()
-		if err != nil {
-			L.RaiseError("failed to load config: %v", err)
-			return 0
-		}
-
-		atomic.AddInt32(&activeScripts, 1)
-		wg.Add(1)
-
-		go func() {
-			defer wg.Done()
-			defer atomic.AddInt32(&activeScripts, -1)
-			defer func() {
-				if r := recover(); r != nil {
-					log.Printf("script %q panicked: %v", name, r)
-				}
-			}()
-
-			if err := RunScript(cfg, name, scriptArgs); err != nil {
-				log.Printf("script %q failed: %v", name, err)
-			}
-		}()
-		return 0
-	}))
-
-	L.SetGlobal("wait", L.NewFunction(func(L *lua.LState) int {
-		wg.Wait()
-		return 0
-	}))
-
-	for name, fun := range GlobalFuncs {
-		L.SetGlobal(name, L.NewFunction(fun))
+func AddScript(script, rawScriptName, scriptName, docs string, force bool) error {
+	conf, err := GetCfg()
+	if err != nil {
+		return err
 	}
 
-	return L
+	rawScriptName = scriptName + "_" + strings.ReplaceAll(rawScriptName, "/", "__")
+
+	runScript := ""
+
+	newScripts := []*shared.Config{}
+	for _, script := range conf.InnerArrV["scripts"] {
+		name := script.StringV["script"]
+		if name == scriptName && !force {
+			return fmt.Errorf("Can't add script: script already added. Use --force to replace script.")
+		}
+		if name != scriptName {
+			newScripts = append(newScripts, script)
+		}
+	}
+	conf.InnerArrV["scripts"] = newScripts
+	addScript := true
+
+	processed := false
+	ext := filepath.Ext(rawScriptName)
+
+	if strings.HasSuffix(rawScriptName, ".nd.task.lua") { // nd - no deps
+		processed = true
+		ext = ".nd.task.lua"
+		runScript = TalRunScriptTemplate(rawScriptName, true)
+	} else if strings.HasSuffix(rawScriptName, ".task.lua") {
+		processed = true
+		ext = ".task.lua"
+		runScript = TalRunScriptTemplate(rawScriptName, true)
+	}
+
+	if !processed {
+		templs := conf.InnerArrV["templates"]
+		for _, cfg := range templs {
+			ext := cfg.StringV["ext"]
+			templ := cfg.StringV["template"]
+			if strings.HasSuffix(rawScriptName, ext) {
+				tpl, err := template.New(ext).Parse(templ)
+				if err != nil {
+					return fmt.Errorf("Add script: parsing extension template: %v", err)
+				}
+				var b strings.Builder
+				err = tpl.Execute(&b, map[string]string{})
+				if err != nil {
+					return fmt.Errorf("Add script: executing extension template: %v", err)
+				}
+				runScript = b.String()
+				processed = true
+			}
+		}
+	}
+
+	if !processed {
+		switch ext {
+		case ".py":
+			processed = true
+			runScript = PythonRunScriptTemplate(rawScriptName)
+		case ".sh":
+			processed = true
+			runScript = BashRunScriptTemplate(rawScriptName)
+		case ".bat":
+			processed = true
+			runScript = BatRunScriptTemplate(rawScriptName)
+		case ".lua":
+			processed = true
+			runScript = script
+			addScript = false
+		}
+	}
+	if !processed {
+		return fmt.Errorf("Unsupportable file extension: %v", ext)
+	}
+	conf.InnerArrV["scripts"] = append(conf.InnerArrV["scripts"], NewScriptConfig(scriptName, scriptName, docs, ext, nil))
+	if err := NewRunScript(scriptName, runScript); err != nil {
+		return err
+	}
+	if err := UpdateConfig(conf); err != nil {
+		return err
+	}
+	if addScript {
+		fpsplit := strings.Split(rawScriptName, "/")
+		file := fpsplit[0]
+		if err := NewScript(file, script); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func RunScript(cfg *shared.Config, name string, rArgs []string) error {
+	var scriptPath string
+	for _, script := range cfg.InnerArrV["scripts"] {
+		scriptName := script.StringV["name"]
+		scriptPath_ := script.StringV["script"]
+		if scriptName == name {
+			scriptPath = scriptPath_
+			break
+		}
+	}
+	if scriptPath == "" {
+		return fmt.Errorf("Script is not found")
+	}
+	file, err := utils.OpenF(filepath.Join(ConfigDirScriptsPath(), scriptPath+".lua"))
+	if err != nil {
+		return err
+	}
+	if err := NewLuaState(rArgs).DoString(file); err != nil {
+		return err
+	}
+	return nil
 }

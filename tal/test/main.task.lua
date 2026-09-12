@@ -1,7 +1,7 @@
 -- @test
 print("test")
-run("--lm -r test")
-run("tal run main.task.lua test2")
+run_cli("--lm -r test")
+run_cli("tal run main.task.lua test2")
 
 -- @test2
 print("test2")
@@ -20,4 +20,5 @@ print("2!")
 if #get_args() > 0 then
     script(get_args()[1]) 
 end
-run("tal update")
+
+update()

@@ -93,7 +93,7 @@ tal list <file>       # show all scripts in the file
 tal help
 ```
 
-`tal update` is required on first run of tal in a directory.
+`tal run ...` supports the `--deps="..."` flag, which allows passing dependencies for the `-- #depends` annotation to the script. If the flag is omitted, the script operates using `.tal.pack`.
 
 ---
 

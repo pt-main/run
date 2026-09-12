@@ -82,8 +82,7 @@ go install github.com/pt-main/run@latest
 | `-list` | Показать список скриптов | `run -list` |
 | `-install <url> [name] [description] [--force] [--args="..."]` | Установить скрипт из внешнего источника, или запустить tal скрипт для установки | |
 | `<name> [args...]` | Запустить скрипт (если имя не совпадает с командой) | `run mypy arg1` |
-| `-tag <name> <tags...>` | Добавить теги | `run -tag mypy deploy prod` |
-| `-rm-tag <name> <tags...>` | Удалить теги | `run -rm-tag mypy prod` |
+| `-tag <name> <tags...>` | Добавить/удалить теги. Используйте префикс `!` для тега чтобы удалить его. | `run -tag mypy deploy !prod dev` |
 | `-localmode [true/false]` | Включить/выключить локальный режим, показать текущее состояние запуска скриптов | `run -localmode true` |
 | `-r <name> [args...] [--tagged='...']` | Запустить скрипт | `run -r mypy arg1 arg2` |
 | `-r --tagged="tag1;tag2;..."` | Запустить скрипты с любым из тегов | `run -r --tagged="deploy;test"` |

@@ -10,6 +10,7 @@ func StdLib() (string, error) {
 	config.InnerArrV["scripts"] = append(config.InnerArrV["scripts"], NewScriptConfig(
 		"test", "test", "[?BBK]Simple script for functions test[?RT]", "", []string{"__test"},
 	))
+	config.InnerArrV["templates"] = []*shared.Config{}
 	conf, err := FormatConfig(config)
 	if err != nil {
 		return "", err

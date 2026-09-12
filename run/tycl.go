@@ -9,5 +9,9 @@ strict {
 		tags: strings,
 		ext: string,
 	},
+	templates: objects = strict {
+		ext: string,
+		template: string,
+	},
 }
 `
