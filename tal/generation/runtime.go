@@ -42,7 +42,7 @@ end
 ---@param name string
 function tasker.run(name)
     if tasker.tasks[name] == nil then
-        error("Has not task: " .. name)
+        error("Has not task: '" .. name .. "'")
         return
     end
     local task = tasker.tasks[name]

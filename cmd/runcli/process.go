@@ -21,6 +21,12 @@ func Process(cli *tap.Parser, args []string) error {
 	}
 	localmode.Set(temp)
 
+	defer func() {
+		if localmode.IsLocalmode() == temp {
+			localmode.Set(lm)
+		}
+	}()
+
 	ok, err := run.CheckConfigDir()
 	if err != nil {
 		return fmt.Errorf("Can't check installation: %v", err)
@@ -34,10 +40,6 @@ func Process(cli *tap.Parser, args []string) error {
 	err = cli.Parse(args)
 	if err != nil {
 		return err
-	}
-
-	if localmode.IsLocalmode() == temp {
-		localmode.Set(lm)
 	}
 	return nil
 }

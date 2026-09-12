@@ -120,7 +120,7 @@ func InstallHandler(p *tap.Parser, s []string) error {
 
 	// running tal isntallation file
 	if rawName == "run.task.lua" {
-		args := s
+		args := s[1:]
 		_args, hasArgs := p.Flags["args"]
 		if hasArgs {
 			args, err = shellwords.Parse(_args)
