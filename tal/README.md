@@ -124,7 +124,7 @@ Each task is a Lua function executed in an environment with access to these func
 - `update()` – recalculates hashes and fully updates `.tal.pack`.
 - `match_pattern(glob, path)` – checks whether the path matches the glob pattern (supports doublestar syntax).
 
-When tal is used from `run_cli`, an additional function becomes available – `run_cli(args_string)` – which directly calls run and parses arguments from the input string.
+When tal is used from `run cli`, an additional function becomes available – `run_cli(args_string)` – which directly calls run and parses arguments from the input string.
 
 **Important**: You cannot use external Lua libraries (the Lua interpreter in tal is written in [Go](https://github.com/yuin/gopher-lua) and does not depend on the system or installed Lua libraries).
 
