@@ -22,19 +22,5 @@
             description: string = "Universal crossplatform go building script",
             tags: strings = [],
         },
-        {
-            name: string = "addMit",
-            script: string = "addMit",
-            description: string = "Write MIT license in current dir to LICENSE file",
-            ext: string = ".py",
-            tags: strings = [],
-        },
-        {
-            name: string = "addApache20",
-            script: string = "addApache20",
-            description: string = "Write Apache 2.0 license in current dir to LICENSE file",
-            ext: string = ".py",
-            tags: strings = [],
-        }
     ],
 }
