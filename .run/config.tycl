@@ -1,0 +1,40 @@
+{
+    templates: objects = [],
+    scripts: objects = [
+        {
+            ext: string = "",
+            name: string = "test",
+            script: string = "test",
+            description: string = "[?BBK]Simple script for functions test[?RT]",
+            tags: strings = ["__test"],
+        },
+        {
+            description: string = "Show system info (works on windows, macos, linux)",
+            ext: string = ".lua",
+            name: string = "sysinfo",
+            script: string = "sysinfo",
+            tags: strings = [],
+        },
+        {
+            ext: string = ".py",
+            name: string = "go-build",
+            script: string = "go-build",
+            description: string = "Universal crossplatform go building script",
+            tags: strings = [],
+        },
+        {
+            name: string = "addMit",
+            script: string = "addMit",
+            description: string = "Write MIT license in current dir to LICENSE file",
+            ext: string = ".py",
+            tags: strings = [],
+        },
+        {
+            name: string = "addApache20",
+            script: string = "addApache20",
+            description: string = "Write Apache 2.0 license in current dir to LICENSE file",
+            ext: string = ".py",
+            tags: strings = [],
+        }
+    ],
+}
