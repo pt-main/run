@@ -6,7 +6,7 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/pt-main/run/tal/core"
-	"github.com/pt-main/tap/color"
+	"github.com/pt-main/tap/go/color"
 	lua "github.com/yuin/gopher-lua"
 )
 
@@ -46,7 +46,7 @@ func NewTalLuaState(changedFiles, args []string) *lua.LState {
 	}))
 
 	L.SetGlobal("print_colored", L.NewFunction(func(L *lua.LState) int {
-		color.PrintColored(L.CheckString(1))
+		color.PrintColored("%s", L.CheckString(1))
 		return 1
 	}))
 

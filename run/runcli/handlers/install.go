@@ -8,8 +8,9 @@ import (
 	"strings"
 
 	"github.com/mattn/go-shellwords"
+	"github.com/pt-main/run/run/api"
 	"github.com/pt-main/run/tal"
-	"github.com/pt-main/tap"
+	tap "github.com/pt-main/tap/go"
 )
 
 func downloadScript(url string) (content string, fileName string, err error) {
@@ -136,6 +137,11 @@ func InstallHandler(p *tap.Parser, s []string) error {
 		return nil
 	}
 
+	cfg, err := api.GetCfg()
+	if err != nil {
+		return err
+	}
+
 	// adding script
-	return AddScript(content, rawName, scriptName, docs, force)
+	return api.Upconf(cfg, api.AddScript(cfg, content, rawName, scriptName, docs, force))
 }

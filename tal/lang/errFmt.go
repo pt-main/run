@@ -9,7 +9,7 @@ import (
 	"github.com/pt-main/lc/parsing/stringParsing/parser3"
 	"github.com/pt-main/lc/public/errors"
 	"github.com/pt-main/run/tal/shared"
-	"github.com/pt-main/tap/color"
+	"github.com/pt-main/tap/go/color"
 )
 
 var (

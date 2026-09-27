@@ -3,9 +3,9 @@ package runcli
 import (
 	"fmt"
 
-	run "github.com/pt-main/run/run"
-	localmode "github.com/pt-main/run/run/localMode"
-	"github.com/pt-main/tap"
+	"github.com/pt-main/run/run/api"
+	localmode "github.com/pt-main/run/run/api/localMode"
+	tap "github.com/pt-main/tap/go"
 )
 
 func Process(cli *tap.Parser, args []string) error {
@@ -27,12 +27,12 @@ func Process(cli *tap.Parser, args []string) error {
 		}
 	}()
 
-	ok, err := run.CheckConfigDir()
+	ok, err := api.CheckConfigDir()
 	if err != nil {
 		return fmt.Errorf("Can't check installation: %v", err)
 	}
 	if !ok {
-		if err := run.InstallConfigDir(); err != nil {
+		if err := api.InstallConfigDir(); err != nil {
 			return fmt.Errorf("Can't make run dir: %v", err)
 		}
 	}

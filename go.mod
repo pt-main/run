@@ -7,14 +7,15 @@ require (
 	github.com/dlclark/regexp2 v1.12.0
 	github.com/iancoleman/orderedmap v0.3.0
 	github.com/mattn/go-shellwords v1.0.14
-	github.com/pt-main/lc v1.5.7-f
+	github.com/pt-main/lc v1.5.8
 	github.com/pt-main/pack v1.2.0
-	github.com/pt-main/tap v1.4.14
+	github.com/pt-main/tap/go v1.5.8
 	github.com/pt-main/tycl v1.3.8
 	github.com/yuin/gopher-lua v1.1.2
 )
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
+	github.com/pt-main/tap v1.4.14 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

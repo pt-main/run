@@ -11,8 +11,8 @@ import (
 	"github.com/pt-main/run/tal/core"
 	"github.com/pt-main/run/tal/lang"
 	"github.com/pt-main/run/tal/shared"
-	"github.com/pt-main/tap"
-	"github.com/pt-main/tap/color"
+	tap "github.com/pt-main/tap/go"
+	"github.com/pt-main/tap/go/color"
 )
 
 func CreateCli() *tap.Parser {
@@ -27,45 +27,38 @@ func CreateCli() *tap.Parser {
 
 	p.AddCommand("update", UpdateHandler,
 		`[?GN]Update .tal.pack[?RT]
-
 Scan the current directory, compute SHA256 hashes for all files,
 and store them in a binary .tal.pack file. Run this once before
 using 'tal run' to enable incremental builds.
-
-[?BBE]Example:[?RT]
+[?BBK]Usage:[?RT]
+  [?BBK]tal update[?RT]
+[?YW]Example:[?RT]
   [?BBK]tal update[?RT]`,
 		nil, nil, false)
 
 	p.AddCommand("list", ListHandler,
 		`[?GN]List tasks in a Tal file[?RT]
-
 Read a .task.lua file and display all defined tasks (including
 global and main blocks). Useful for quickly checking what's
 available in a project.
-
-[?BBE]Usage:[?RT]
-  [?BBK]tal list <files...>[?RT]
-
-[?BBE]Example:[?RT]
+[?BBK]Usage:[?RT]
+  [?BBK]tal list <file> [file...][?RT]
+[?YW]Example:[?RT]
   [?BBK]tal list main.task.lua[?RT]`,
 		[]string{"task-lua-file"}, nil, true)
 
 	p.AddCommand("run", RunHandler,
 		`[?GN]Run a Tal file[?RT]
-
 Parse and execute the given .task.lua file. All arguments after
 the file name are passed directly to the Lua script via get_args()
 and are not interpreted by the CLI.
-
-[?BBE]Usage:[?RT]
-  [?BBK]tal run <file> [args...] [--deps='dep1;dep2'][?RT]
-
-[?BBE]Flag [?BBK]--deps[?RT]
-  [?BBK]Used to pass dependencies for the [?GN]--#depends[?BBK] annotation. 
-  [?BBK]If this flag is not provided, modified files are specified 
-  [?BBK]as dependencies (requires the presence of [?YW].tal.pack[?BBK]).
-
-[?BBE]Examples:[?RT]
+[?BBK]Usage:[?RT]
+  [?BBK]tal run <file> [args...] [--deps="dep1;dep2"][?RT]
+[?BBK]Flag --deps:[?RT]
+  Used to pass dependencies for the --#depends annotation.
+  If this flag is not provided, modified files are specified
+  as dependencies (requires the presence of .tal.pack).
+[?YW]Examples:[?RT]
   [?BBK]tal run main.task.lua[?RT]           # run the script (main block or default)
   [?BBK]tal run main.task.lua build[?RT]     # pass "build" as argument to the script
   [?BBK]tal run main.task.lua test -v[?RT]   # pass arguments to the script`,
@@ -73,11 +66,11 @@ and are not interpreted by the CLI.
 
 	p.AddCommand("init", InitHandler,
 		`[?GN]Create a default Tal file[?RT]
-
 Generate a minimal main.task.lua file with a main block that
 accepts arguments. This is a quick way to start a new project.
-
-[?BBE]Example:[?RT]
+[?BBK]Usage:[?RT]
+  [?BBK]tal init[?RT]
+[?YW]Example:[?RT]
   [?BBK]tal init[?RT]`,
 		nil, nil, false)
 
@@ -131,7 +124,7 @@ func ListHandler(p *tap.Parser, s []string) error {
 			res = append(res, fmt.Sprintf(templ, idx, "Main"))
 		}
 		res = append(res, "[?GN]╰───────[?RT]")
-		color.PrintlnColored(strings.Join(res, "\n"))
+		color.PrintlnColored("%s", strings.Join(res, "\n"))
 	}
 	return nil
 }

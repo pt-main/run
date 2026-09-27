@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Unknown extension on purpose: proves the empty-ext fallback template is used.
+echo "FALLBACK-SCRIPT: this is the original unknown-extension body"
+i=1
+for a in "$@"; do
+  echo "FALLBACK-SCRIPT: arg[$i] = $a"
+  i=$((i+1))
+done
+echo "FALLBACK-SCRIPT: done"

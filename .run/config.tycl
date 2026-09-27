@@ -1,0 +1,12 @@
+{
+    scripts: objects = [
+        {
+            name: string = "test",
+            script: string = "test",
+            description: string = "[?BBK]Simple script for functions test[?RT]",
+            ext: string = "",
+            tags: strings = ["__test"],
+        }
+    ],
+    templates: objects = [],
+}

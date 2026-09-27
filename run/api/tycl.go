@@ -1,7 +1,7 @@
-package runlib
+package api
 
-var tyclContract = `
-strict {
+var TyclContract = `
+flexible {
 	scripts: objects = strict {
 		name: string,
 		script: string,
@@ -11,7 +11,7 @@ strict {
 	},
 	templates: objects = strict {
 		ext: string,
-		template: string,
+		file: string,
 	},
 }
 `

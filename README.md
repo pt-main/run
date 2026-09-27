@@ -68,6 +68,7 @@ go install github.com/pt-main/run@latest
 **On first launch** run will create a structure in `~/run/`:
 - `config.tycl` - config with the list of scripts.
 - `scripts/` - Lua wrappers for launching.
+- `templates/` - bodies of custom wrapper templates.
 - `base/` - original script files.
 
 ---
@@ -90,7 +91,7 @@ go install github.com/pt-main/run@latest
 | `-r --tagged="..." --args=""` | Pass arguments to the script (if you need to avoid a conflict, for example with run flags, or not pass arguments) | `run -r --tagged="deploy;build" --args="--tagged dev"`,`run -r --tagged="deploy;build" --parallel --args` - does not pass arguments instead of passing `--parallel` |
 | `-version` | Show the version of run and tal | `run -version` |
 
-`--no_color` – flag disables colored output throughout the session.
+`--no_color` - flag disables colored output throughout the session.
 
 ---
 
@@ -132,6 +133,8 @@ run automatically generates **Lua wrappers** that call the original scripts with
 ├── config.tycl          # Config in TYCL (strict contract)
 ├── scripts/             # Lua wrappers for launching
 │   └── myscript.lua
+├── templates/           # Bodies of custom wrapper templates
+│   └── rb.templ
 └── base/                # Original scripts
     └── myscript.py
 ```
@@ -151,6 +154,10 @@ strict {
         description: string, // Description
         tags: strings,       // Tags
         ext: string,         // Extension (.py, .sh, .bat, .lua)
+    },
+    templates: objects = strict {
+        ext: string,         // File extension
+        file: string,        // Template body file inside the templates/ dir
     },
 }
 ```
@@ -181,8 +188,8 @@ Each wrapper is a Lua script that provides:
 - `get_arg(idx)` - get an argument by index.
 - `get_args()` - table of all arguments.
 - `run_script(name, ...)` - run another script from the wrapper.
-- `run_script_parallel(name, ...)` – runs the specified script asynchronously in a background thread. Does not block execution of the current script. All arguments after the name are passed to the called script.
-- `wait()` – waits for all background scripts started via `run_script_parallel` to finish. It is recommended to call it after starting parallel tasks to wait for their completion before the main script exits.
+- `run_script_parallel(name, ...)` - runs the specified script asynchronously in a background thread. Does not block execution of the current script. All arguments after the name are passed to the called script.
+- `wait()` - waits for all background scripts started via `run_script_parallel` to finish. It is recommended to call it after starting parallel tasks to wait for their completion before the main script exits.
 - `run_cli(args)` - run run cli with the passed arguments (as a string) in the current session.
 
 Example:
@@ -241,4 +248,4 @@ run --localmode add script.py build
 
 ---
 
-By Pt, 2026 – written using `lc`, `tap`, `pack`, `tycl`.
+By Pt, 2026 - written using `lc`, `tap`, `pack`, `tycl`.

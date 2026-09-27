@@ -1,0 +1,49 @@
+{
+    templates: objects = [
+        {
+            file: string = "rb.templ",
+            ext: string = ".rb",
+        },
+        {
+            ext: string = "",
+            file: string = "default.templ",
+        }
+    ],
+    scripts: objects = [
+        {
+            script: string = "test",
+            description: string = "[?BBK]Simple script for functions test[?RT]",
+            ext: string = "",
+            name: string = "test",
+            tags: strings = ["__test"],
+        },
+        {
+            ext: string = ".rb",
+            name: string = "hello",
+            script: string = "hello",
+            description: string = "Ruby hello",
+            tags: strings = [],
+        },
+        {
+            ext: string = ".unknownext",
+            name: string = "tool",
+            script: string = "tool",
+            description: string = "Fallback test",
+            tags: strings = [],
+        },
+        {
+            name: string = "deploy",
+            script: string = "deploy",
+            description: string = "Bash test",
+            ext: string = ".sh",
+            tags: strings = [],
+        },
+        {
+            ext: string = ".py",
+            name: string = "calc",
+            script: string = "calc",
+            description: string = "Python test",
+            tags: strings = [],
+        }
+    ],
+}

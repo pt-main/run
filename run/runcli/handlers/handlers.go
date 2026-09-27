@@ -1,13 +1,15 @@
 package runlib
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
-	"time"
+	"sync"
 
-	"github.com/pt-main/tap"
-	"github.com/pt-main/tap/color"
+	"github.com/pt-main/run/run/api"
+	tap "github.com/pt-main/tap/go"
+	"github.com/pt-main/tap/go/color"
 	"github.com/pt-main/tycl/shared"
 	"github.com/pt-main/tycl/utils"
 )
@@ -23,11 +25,15 @@ func AddHandler(p *tap.Parser, s []string) error {
 	if len(s) > 2 {
 		docs = s[2]
 	}
-	return AddScript(script, s[0], s[1], docs, force)
+	conf, err := api.GetCfg()
+	if err != nil {
+		return err
+	}
+	return api.Upconf(conf, api.AddScript(conf, script, s[0], s[1], docs, force))
 }
 
 func RemoveHandler(p *tap.Parser, s []string) error {
-	cfg, err := GetCfg()
+	cfg, err := api.GetCfg()
 	if err != nil {
 		return err
 	}
@@ -39,11 +45,11 @@ func RemoveHandler(p *tap.Parser, s []string) error {
 		}
 	}
 	cfg.InnerArrV["scripts"] = newScripts
-	return UpdateConfig(cfg)
+	return api.UpdateConfig(cfg)
 }
 
 func ListHandler(p *tap.Parser, s []string) error {
-	cfg, err := GetCfg()
+	cfg, err := api.GetCfg()
 	if err != nil {
 		return err
 	}
@@ -69,12 +75,15 @@ func ListHandler(p *tap.Parser, s []string) error {
 
 func MakeRunHandler(hasRawArgs bool) func(p *tap.Parser, s []string) error {
 	return func(p *tap.Parser, s []string) error {
-		cfg, err := GetCfg()
+		cfg, err := api.GetCfg()
 		if err != nil {
 			return err
 		}
-		idx := 1
-		if slices.Contains([]string{"--gm", "--globalmode",
+		idx := 0
+		if len(s) > 0 {
+			idx += 1
+		}
+		if len(p.RawArgs) > 0 && slices.Contains([]string{"--gm", "--globalmode",
 			"--lm", "--localmode"}, p.RawArgs[0]) {
 			idx += 1
 		}
@@ -84,7 +93,7 @@ func MakeRunHandler(hasRawArgs bool) func(p *tap.Parser, s []string) error {
 		var args []string = nil
 		args_, ok := p.Flags["args"]
 		if ok {
-			args, err = ProcessShell(args_)
+			args, err = api.ProcessShell(args_)
 			if err != nil {
 				return err
 			}
@@ -92,14 +101,16 @@ func MakeRunHandler(hasRawArgs bool) func(p *tap.Parser, s []string) error {
 				args = []string{}
 			}
 		}
-		if args == nil {
+		if args == nil && len(p.RawArgs) > 0 {
 			args = p.RawArgs[idx:]
 		}
 		if tags_, ok := p.Flags["tagged"]; ok {
 			_, parallel := p.Flags["parallel"]
 			tags := strings.Split(tags_, ";")
 			errs := []string{}
-			goru := 0
+			var errsMu sync.Mutex
+			var wg sync.WaitGroup
+
 			for _, script := range cfg.InnerArrV["scripts"] {
 				scrTags := script.StringArrV["tags"]
 				scriptName := script.StringV["name"]
@@ -107,19 +118,20 @@ func MakeRunHandler(hasRawArgs bool) func(p *tap.Parser, s []string) error {
 					if slices.Contains(tags, tag) {
 						p.Print("verbose", "Run %v: ", scriptName)
 						if parallel {
-							go func() {
-								goru += 1
-								if err := RunScript(cfg, scriptName, args); err != nil {
+							wg.Add(1)
+							go func(name string) {
+								defer wg.Done()
+								if err := api.RunScript(cfg, name, args); err != nil {
 									p.Print("verbose", "[?RD]Err[?YW]:[RT] %v", err)
+									errsMu.Lock()
 									errs = append(errs, err.Error())
+									errsMu.Unlock()
 								} else {
 									p.Print("verbose", "[?GN]Ok[?RT]")
 								}
-								goru -= 1
-							}()
-							time.Sleep(time.Second / 500)
+							}(scriptName)
 						} else {
-							if err := RunScript(cfg, scriptName, args); err != nil {
+							if err := api.RunScript(cfg, scriptName, args); err != nil {
 								p.Print("verbose", "[?RD]Err[?YW]:[RT] %v", err)
 								errs = append(errs, err.Error())
 							} else {
@@ -129,27 +141,25 @@ func MakeRunHandler(hasRawArgs bool) func(p *tap.Parser, s []string) error {
 					}
 				}
 			}
-			p.Print("verbose", "[?GN]Gorutines: %v[?RT]", goru)
-			for goru != 0 {
-				time.Sleep(time.Second / 500)
-			}
+
+			wg.Wait()
 			if len(errs) == 0 {
 				return nil
 			}
-			return fmt.Errorf(" - " + strings.Join(errs, "\n - "))
+			return errors.New(" - " + strings.Join(errs, "\n - "))
 		} else {
 			if len(s) < 1 {
 				return fmt.Errorf("Invalid argument length: need more or equals to 1")
 			}
 			name := s[0]
 			p.Print("verbose", "Run %v: ", name)
-			return RunScript(cfg, name, args)
+			return api.RunScript(cfg, name, args)
 		}
 	}
 }
 
 func TagHahdler(p *tap.Parser, s []string) error {
-	cfg, err := GetCfg()
+	cfg, err := api.GetCfg()
 	if err != nil {
 		return err
 	}
@@ -176,5 +186,5 @@ func TagHahdler(p *tap.Parser, s []string) error {
 			break
 		}
 	}
-	return UpdateConfig(cfg)
+	return api.UpdateConfig(cfg)
 }
