@@ -42,6 +42,11 @@ func RemoveHandler(p *tap.Parser, s []string) error {
 		name := script.StringV["name"]
 		if name != s[0] {
 			newScripts = append(newScripts, script)
+			continue
+		}
+		// drop the generated wrapper together with the config entry
+		if err := api.RemoveRunScript(script.StringV["script"]); err != nil {
+			return err
 		}
 	}
 	cfg.InnerArrV["scripts"] = newScripts

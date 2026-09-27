@@ -1,8 +1,8 @@
 # tal - incremental task runner with Lua and dependencies
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/tal.svg)](https://pkg.go.dev/github.com/pt-main/tal)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Release](https://img.shields.io/github/v/release/pt-main/tal)](https://github.com/pt-main/tal/releases)
+[![Release](https://img.shields.io/github/v/release/pt-main/run)](https://github.com/pt-main/run/releases)
 
 > tal - Task Lua
 
@@ -164,7 +164,7 @@ When tal is used from `run cli`, an additional function becomes available - `run
 
 ## License
 
-Apache 2.0 - details in [LICENSE](LICENSE).
+Apache 2.0 - details in [LICENSE](../LICENSE).
 
 ---
 

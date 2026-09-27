@@ -1,7 +1,3 @@
-Обновил README: сохранил твою структуру и добавил раздел про кастомные шаблоны обёрток (как их писать, какие переменные доступны, порядок выбора, пример для Ruby).
-
----
-
 # run - менеджер скриптов и задач
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
@@ -18,6 +14,8 @@ go install github.com/pt-main/run/cmd/tal@latest
 **run** - это инструмент для управления скриптами, скриптования любых сценариев на встроенном lua-подобном языке с инкрементальностью, хранения скриптов в глобальном/локальном хранилище, полной независимостью от системы и платформы (работает везде куда компилируется go), и со встроенными способами дистрибуции скриптов, например через github.
 
 Проект содержит внутри себя Task Lua (tal) - таскер, бесшовно интегрированный в run. Подробнее можно прочитать в [README](https://github.com/pt-main/run/blob/main/tal/README.md) проекта.
+
+> Английская версия этого документа: [README.md](README.md).
 
 ---
 
@@ -67,11 +65,13 @@ sudo mv run-linux-amd64 /usr/local/bin/run
 
 ```bash
 go install github.com/pt-main/run/cmd/run@latest
+go install github.com/pt-main/run/cmd/tal@latest   # опционально, отдельный tal
 ```
 
 **При первом запуске** run создаст структуру в `~/run/`:
 - `config.tycl` - конфиг со списком скриптов.
 - `scripts/` - Lua-обёртки для запуска.
+- `templates/` - тела кастомных шаблоонов обёрток.
 - `base/` - оригинальные файлы скриптов.
 
 ---
@@ -95,7 +95,7 @@ CLI состоит из корневого парсера `run` и подком�
 
 | Команда | Описание | Пример |
 |---------|----------|--------|
-| `run manage script-add <path> <name> [docs] [--force]` | Добавить скрипт (поддерживает `.py`, `.sh`, `.bat`, `.lua`, `.task.lua`) | `run manage script-add ./deploy.py deploy "Deploy to production"` |
+| `run manage script-add <path> <name> [docs] [--force]` | Добавить скрипт (поддерживает `.py`, `.sh`, `.bat`, `.lua`, `.task.lua`, `.nd.task.lua`) | `run manage script-add ./deploy.py deploy "Deploy to production"` |
 | `run manage script-remove <name>` | Удалить скрипт | `run manage script-remove mypy` |
 | `run manage list` | Показать список скриптов | `run manage list` |
 | `run manage tag <name> <tags...>` | Добавить/удалить теги. Префикс `!` удаляет тег | `run manage tag mypy deploy !prod dev` |
@@ -105,7 +105,7 @@ CLI состоит из корневого парсера `run` и подком�
 
 Алиасы: `scradd` = `script-add`, `screm` = `script-remove`, `tladd` = `templ-add`, `tlrem` = `templ-remove`.
 
-Подробнее с использованием `run manage -help`
+Подробнее с использованием `run manage help`
 
 ### Системные операции: `run sys`
 
@@ -133,7 +133,8 @@ run tal run main.task.lua build
 
 - `--verbose` - подробный вывод.
 - `--debug` - отладочный вывод.
-- `-h`, `-help` - справка.
+- `-h`, `-help`, `help` - справка.
+- `--no_color` - отключить цветной вывод на время сессии.
 
 ---
 
@@ -150,12 +151,12 @@ run sys localmode        # вывести состояние
 
 Это удобно для проектов: скрипты хранятся в репозитории и не мешают глобальному конфигу.
 
-Флаги `--ll`, `--localmode`, `--gm`, `--globalmode` - сразу после `run` - переключают режим только на время текущего запуска, после чего восстанавливают значение, установленное через `run sys localmode`.
+Флаги `--lm`, `--localmode`, `--gm`, `--globalmode` - сразу после `run` - переключают режим только на время текущего запуска, после чего восстанавливают значение, установленное через `run sys localmode`.
 
 ```bash
 run --localmode manage list       # посмотреть локальные скрипты
 run --globalmode -r deploy        # запустить глобальный скрипт
-run --lm -install github.com/pt-main/run-scripts@main/sysfetch.lua # установить скрипт локально
+run --lm manage install github.com/pt-main/run-scripts@main/sysfetch.lua # установить скрипт локально
 ```
 
 **Важно**: флаг `--localmode` / `--globalmode` должен идти сразу после `run`.
@@ -174,7 +175,10 @@ run автоматически генерирует **Lua-обёртки**, ко
 | `.sh` | Bash | Выполняет через `bash` |
 | `.bat` | Batch | Выполняет через `cmd /c` |
 | `.lua` | Lua | Выполняется напрямую (без обёртки) |
-| `.task.lua` | Task Lua (Tal) | Выполняет через `run tal run` |
+| `.task.lua` | Task Lua (Tal) | Выполняет файл как tal-задачу (с проверкой зависимостей) |
+| `.nd.task.lua` | Task Lua (Tal) | То же, но с отключённой проверкой зависимостей (`nd` - no deps) |
+
+Любое другое расширение доступно через [кастомный шаблон обёртки](#кастомные-шаблоны-обёрток).
 
 ---
 
@@ -232,9 +236,9 @@ run manage templ-remove ".rb"     # или алиас: run manage tlrem ".rb"
 
 ### Пример: шаблон для Ruby
 
-Файл `ruby-template.lua`:
+Файл `ruby-template.lua` (это **Go-шаблон**, а не готовый Lua-скрипт):
 
-```
+```lua
 -- === CONFIGURATION ===
 local script_file = script_path("{{.name}}")
 local args = get_args()
@@ -300,12 +304,12 @@ strict {
         script: string,      // Имя файла обёртки (совпадает с названием lua скрипта внутри run/scripts, без расширения)
         description: string, // Описание
         tags: strings,       // Теги
-        ext: string,         // Расширение (.py, .sh, .bat, .lua)
+        ext: string,         // Расширение (.py, .sh, .bat, .lua, .task.lua)
     },
-    templates: objects = strict { 
-		ext: string,         // расширение файла
-		file: string,        // файл шаблона для скрипта запуска (в папке templates/)
-	},
+    templates: objects = strict {
+        ext: string,         // расширение файла
+        file: string,        // файл шаблона для скрипта запуска (в папке templates/)
+    },
 }
 ```
 
@@ -313,6 +317,7 @@ strict {
 
 ```tycl
 {
+    templates: objects = [],
     scripts: objects = [
         {
             name: string = "test",
@@ -322,7 +327,6 @@ strict {
             tags: strings = ["__test"],
         }
     ],
-    templates: objects = [],
 }
 ```
 
@@ -422,6 +426,12 @@ run sys version
 # или
 run sys -v
 ```
+
+---
+
+## Лицензия
+
+Apache 2.0 - подробности в [LICENSE](LICENSE).
 
 ---
 

@@ -140,7 +140,12 @@ func RunHandler(p *tap.Parser, s []string) (err error) {
 	} else {
 		ch, err = GetChanges()
 		if err != nil {
-			return
+			// No .tal.pack yet: report every file as changed so that tasks
+			// without --#depends still run and the first run is not a no-op.
+			ch, err = allChangedFiles()
+			if err != nil {
+				return
+			}
 		}
 	}
 	args := []string{}
@@ -170,4 +175,16 @@ func GetChanges() ([]string, error) {
 		return nil, err
 	}
 	return core.Changes(w, ".")
+}
+
+// allChangedFiles lists every file in the current directory, so dependency
+// checks treat the whole tree as changed. Used when .tal.pack is missing.
+func allChangedFiles() ([]string, error) {
+	state, err := core.SaveState(".")
+	if err != nil {
+		return nil, err
+	}
+	res := make([]string, 0, len(state.Keys()))
+	res = append(res, state.Keys()...)
+	return res, nil
 }

@@ -89,6 +89,19 @@ func NewRunScript(name, content string) error {
 	return utils.WriteF(filepath.Join(ConfigDirScriptsPath(), name+".lua"), content)
 }
 
+// RemoveRunScript deletes a previously generated wrapper. A missing file is
+// not an error, so removing a script is idempotent.
+func RemoveRunScript(name string) error {
+	if name == "" {
+		return nil
+	}
+	path := filepath.Join(ConfigDirScriptsPath(), name+".lua")
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("Can't remove wrapper %q: %v", path, err)
+	}
+	return nil
+}
+
 // TemplateFileName builds a file name for a template of the given extension.
 // It is used when a template is stored as a file instead of being inlined
 // into the config.

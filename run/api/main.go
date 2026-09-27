@@ -12,6 +12,7 @@ import (
 	"github.com/pt-main/tycl/format"
 	"github.com/pt-main/tycl/shared"
 	"github.com/pt-main/tycl/utils"
+	lua "github.com/yuin/gopher-lua"
 )
 
 // LegacyTyclContract is the old contract where templates were stored inline
@@ -129,11 +130,11 @@ func AddScript(conf *shared.Config, script, rawScriptName, scriptName, docs stri
 	if strings.HasSuffix(rawScriptName, ".nd.task.lua") { // nd - no deps
 		processed = true
 		ext = ".nd.task.lua"
-		runScript = TalRunScriptTemplate(rawScriptName, false)
+		runScript = TalRunScriptTemplate(rawScriptName)
 	} else if strings.HasSuffix(rawScriptName, ".task.lua") {
 		processed = true
 		ext = ".task.lua"
-		runScript = TalRunScriptTemplate(rawScriptName, true)
+		runScript = TalRunScriptTemplate(rawScriptName)
 	}
 
 	var fallbackFile *string
@@ -263,6 +264,13 @@ func RemoveTemplate(conf *shared.Config, ext string) error {
 	return nil
 }
 
+// RunScript executes the wrapper of the given script inside a fresh Lua state.
+//
+// Every generated wrapper ends with os.exit(...). gopher-lua implements os.exit
+// as a real os.Exit, so running two scripts in a single process (tagged runs,
+// run_script from another wrapper) would kill the process after the first one.
+// osTableWithExit replaces os.exit with a recorded code, so the wrapper returns
+// normally and the caller decides what to do with the exit code.
 func RunScript(cfg *shared.Config, name string, rArgs []string) error {
 	var scriptPath string
 	for _, script := range cfg.InnerArrV["scripts"] {
@@ -280,10 +288,34 @@ func RunScript(cfg *shared.Config, name string, rArgs []string) error {
 	if err != nil {
 		return err
 	}
-	if err := NewLuaState(rArgs).DoString(file); err != nil {
+	code := 0
+	L := NewLuaState(rArgs)
+	L.SetGlobal("os", osTableWithExit(L, &code))
+	if err := L.DoString(file); err != nil {
 		return err
 	}
+	if code != 0 {
+		return fmt.Errorf("Script %q exited with code %d", name, code)
+	}
 	return nil
+}
+
+// osTableWithExit copies the standard os table, replacing exit with a version
+// that records the requested exit code instead of terminating the process.
+func osTableWithExit(L *lua.LState, code *int) *lua.LTable {
+	os, ok := L.GetGlobal("os").(*lua.LTable)
+	if !ok {
+		return L.NewTable()
+	}
+	res := L.NewTable()
+	os.ForEach(func(k, v lua.LValue) {
+		res.RawSetString(k.String(), v)
+	})
+	res.RawSetString("exit", L.NewFunction(func(L *lua.LState) int {
+		*code = L.OptInt(1, 0)
+		return 0
+	}))
+	return res
 }
 
 func Upconf(conf *shared.Config, err error) error {

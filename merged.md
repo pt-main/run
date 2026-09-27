@@ -9,7 +9,6 @@
 - [go.mod](#go-mod)
 - [go.sum](#go-sum)
 - [main.go](#main-go)
-- [rubytempl.txt](#rubytempl-txt)
 - [run/api/funcs.go](#run-api-funcs-go)
 - [run/api/localMode/main.go](#run-api-localmode-main-go)
 - [run/api/lua.go](#run-api-lua-go)
@@ -41,6 +40,14 @@
 - [tal/test/main.go](#tal-test-main-go)
 - [tal/test/main.task.lua](#tal-test-main-task-lua)
 - [tal/test/simple.task.lua](#tal-test-simple-task-lua)
+- [test/README.md](#test-readme-md)
+- [test/calc.py](#test-calc-py)
+- [test/deploy.sh](#test-deploy-sh)
+- [test/hello.rb](#test-hello-rb)
+- [test/inline.lua](#test-inline-lua)
+- [test/tool.unknownext](#test-tool-unknownext)
+- [test/tpl-fallback.templ](#test-tpl-fallback-templ)
+- [test/tpl-ruby.templ](#test-tpl-ruby-templ)
 
 ---
 
@@ -257,10 +264,6 @@
 # README-RU.md
 
 ```md
-Обновил README: сохранил твою структуру и добавил раздел про кастомные шаблоны обёрток (как их писать, какие переменные доступны, порядок выбора, пример для Ruby).
-
----
-
 # run - менеджер скриптов и задач
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
@@ -277,6 +280,8 @@ go install github.com/pt-main/run/cmd/tal@latest
 **run** - это инструмент для управления скриптами, скриптования любых сценариев на встроенном lua-подобном языке с инкрементальностью, хранения скриптов в глобальном/локальном хранилище, полной независимостью от системы и платформы (работает везде куда компилируется go), и со встроенными способами дистрибуции скриптов, например через github.
 
 Проект содержит внутри себя Task Lua (tal) - таскер, бесшовно интегрированный в run. Подробнее можно прочитать в [README](https://github.com/pt-main/run/blob/main/tal/README.md) проекта.
+
+> Английская версия этого документа: [README.md](README.md).
 
 ---
 
@@ -326,11 +331,13 @@ sudo mv run-linux-amd64 /usr/local/bin/run
 
 '''bash
 go install github.com/pt-main/run/cmd/run@latest
+go install github.com/pt-main/run/cmd/tal@latest   # опционально, отдельный tal
 '''
 
 **При первом запуске** run создаст структуру в '~/run/':
 - 'config.tycl' - конфиг со списком скриптов.
 - 'scripts/' - Lua-обёртки для запуска.
+- 'templates/' - тела кастомных шаблоонов обёрток.
 - 'base/' - оригинальные файлы скриптов.
 
 ---
@@ -354,7 +361,7 @@ CLI состоит из корневого парсера 'run' и подком�
 
 | Команда | Описание | Пример |
 |---------|----------|--------|
-| 'run manage script-add <path> <name> [docs] [--force]' | Добавить скрипт (поддерживает '.py', '.sh', '.bat', '.lua', '.task.lua') | 'run manage script-add ./deploy.py deploy "Deploy to production"' |
+| 'run manage script-add <path> <name> [docs] [--force]' | Добавить скрипт (поддерживает '.py', '.sh', '.bat', '.lua', '.task.lua', '.nd.task.lua') | 'run manage script-add ./deploy.py deploy "Deploy to production"' |
 | 'run manage script-remove <name>' | Удалить скрипт | 'run manage script-remove mypy' |
 | 'run manage list' | Показать список скриптов | 'run manage list' |
 | 'run manage tag <name> <tags...>' | Добавить/удалить теги. Префикс '!' удаляет тег | 'run manage tag mypy deploy !prod dev' |
@@ -364,7 +371,7 @@ CLI состоит из корневого парсера 'run' и подком�
 
 Алиасы: 'scradd' = 'script-add', 'screm' = 'script-remove', 'tladd' = 'templ-add', 'tlrem' = 'templ-remove'.
 
-Подробнее с использованием 'run manage -help'
+Подробнее с использованием 'run manage help'
 
 ### Системные операции: 'run sys'
 
@@ -392,7 +399,8 @@ run tal run main.task.lua build
 
 - '--verbose' - подробный вывод.
 - '--debug' - отладочный вывод.
-- '-h', '-help' - справка.
+- '-h', '-help', 'help' - справка.
+- '--no_color' - отключить цветной вывод на время сессии.
 
 ---
 
@@ -409,12 +417,12 @@ run sys localmode        # вывести состояние
 
 Это удобно для проектов: скрипты хранятся в репозитории и не мешают глобальному конфигу.
 
-Флаги '--ll', '--localmode', '--gm', '--globalmode' - сразу после 'run' - переключают режим только на время текущего запуска, после чего восстанавливают значение, установленное через 'run sys localmode'.
+Флаги '--lm', '--localmode', '--gm', '--globalmode' - сразу после 'run' - переключают режим только на время текущего запуска, после чего восстанавливают значение, установленное через 'run sys localmode'.
 
 '''bash
 run --localmode manage list       # посмотреть локальные скрипты
 run --globalmode -r deploy        # запустить глобальный скрипт
-run --lm -install github.com/pt-main/run-scripts@main/sysfetch.lua # установить скрипт локально
+run --lm manage install github.com/pt-main/run-scripts@main/sysfetch.lua # установить скрипт локально
 '''
 
 **Важно**: флаг '--localmode' / '--globalmode' должен идти сразу после 'run'.
@@ -433,13 +441,27 @@ run автоматически генерирует **Lua-обёртки**, ко
 | '.sh' | Bash | Выполняет через 'bash' |
 | '.bat' | Batch | Выполняет через 'cmd /c' |
 | '.lua' | Lua | Выполняется напрямую (без обёртки) |
-| '.task.lua' | Task Lua (Tal) | Выполняет через 'run tal run' |
+| '.task.lua' | Task Lua (Tal) | Выполняет файл как tal-задачу (с проверкой зависимостей) |
+| '.nd.task.lua' | Task Lua (Tal) | То же, но с отключённой проверкой зависимостей ('nd' - no deps) |
+
+Любое другое расширение доступно через [кастомный шаблон обёртки](#кастомные-шаблоны-обёрток).
 
 ---
 
 ## Кастомные шаблоны обёрток
 
-Для расширений, которых нет среди встроенных, можно добавить свой **шаблон обёртки**. Шаблон — это обычная строка на [Go 'text/template'](https://pkg.go.dev/text/template), результатом которой становится Lua-скрипт, сохраняемый в 'scripts/<name>.lua'.
+Для расширений, которых нет среди встроенных, можно добавить свой **шаблон обёртки**. Шаблон — это файл на [Go 'text/template'](https://pkg.go.dev/text/template), результатом которого становится Lua-скрипт, сохраняемый в 'scripts/<name>.lua'.
+
+Сам шаблон **не хранится в конфиге**: он лежит в папке 'templates/', а в 'config.tycl' указывается только ссылка на файл:
+
+'''tycl
+templates: objects = [
+    {
+        ext: string = ".rb",
+        file: string = "rb.templ",   // файл в папке templates/
+    }
+],
+'''
 
 ### Доступные переменные
 
@@ -463,7 +485,7 @@ run автоматически генерирует **Lua-обёртки**, ко
 ### Управление шаблонами
 
 '''bash
-# из файла
+# из файла (содержимое копируется в templates/<ext>.templ)
 run manage templ-add ".rb" ruby-template.lua
 
 # из строки
@@ -472,15 +494,17 @@ run manage templ-add ".rb" --source='...'
 # перезаписать существующий
 run manage templ-add ".rb" ruby-template.lua --force
 
-# удалить
+# удалить (файл из templates/ тоже удаляется)
 run manage templ-remove ".rb"     # или алиас: run manage tlrem ".rb"
 '''
 
+> 'file' может быть и абсолютным/относительным путём — если он абсолютный, читается как есть, иначе ищется в папке 'templates/'.
+
 ### Пример: шаблон для Ruby
 
-Файл 'ruby-template.lua':
+Файл 'ruby-template.lua' (это **Go-шаблон**, а не готовый Lua-скрипт):
 
-'''
+'''lua
 -- === CONFIGURATION ===
 local script_file = script_path("{{.name}}")
 local args = get_args()
@@ -510,27 +534,13 @@ run manage script-add ./my_tool.rb mytool "My Ruby tool"
 run -r mytool arg1 arg2
 '''
 
-### Fallback-шаблон
-
-Шаблон с пустым 'ext' вызывается, когда ни один другой не совпал. Удобно для универсальной обёртки:
-
-'''bash
-run manage templ-add "" --source='-- fallback wrapper
-local f = script_path("{{.name}}")
-local args = get_args()
-local cmd = f
-for _, a in ipairs(args) do
-    cmd = cmd .. " " .. '"' .. a .. '"'
-end
-os.exit(os.execute(cmd) or 0)'
-'''
-
 ### Важно
 
 - Шаблон — это **Go template**, а не Lua. '{{.ext}}' и '{{.name}}' подставляются до записи в 'scripts/'.
 - Тело шаблона — это Lua-код будущей обёртки. Он должен корректно завершаться ('os.exit(...)').
 - Один 'ext' = один шаблон. Чтобы заменить существующий, используйте '--force'.
-- Шаблоны хранятся в 'config.tycl' в поле 'templates' и не зависят от языка оригинала.
+- Тела шаблонов лежат в папке 'templates/', а в 'config.tycl' в поле 'templates' хранится только '{ext, file}' — конфиг остаётся читаемым, шаблоны можно редактировать и подсвечивать обычными редакторами.
+- Старые конфиги, где тело шаблона было в поле 'template', автоматически мигрируют: тело выносится в 'templates/<ext>.templ', а в конфиге остаётся 'file'. Миграция происходит один раз при чтении конфига.
 
 ---
 
@@ -541,6 +551,8 @@ os.exit(os.execute(cmd) or 0)'
 ├── config.tycl          # Конфиг на TYCL (строгий контракт)
 ├── scripts/             # Lua-обёртки для запуска
 │   └── myscript.lua
+├── templates/           # Тела шаблонов обёрток
+│   └── rb.templ
 └── base/                # Оригинальные скрипты
     └── myscript.py
 '''
@@ -558,12 +570,12 @@ strict {
         script: string,      // Имя файла обёртки (совпадает с названием lua скрипта внутри run/scripts, без расширения)
         description: string, // Описание
         tags: strings,       // Теги
-        ext: string,         // Расширение (.py, .sh, .bat, .lua)
+        ext: string,         // Расширение (.py, .sh, .bat, .lua, .task.lua)
     },
-    templates: objects = strict { 
-		ext: string,         // расширение файла
-		template: string,    // шаблон для скрипта запуска
-	},
+    templates: objects = strict {
+        ext: string,         // расширение файла
+        file: string,        // файл шаблона для скрипта запуска (в папке templates/)
+    },
 }
 '''
 
@@ -571,6 +583,7 @@ strict {
 
 '''tycl
 {
+    templates: objects = [],
     scripts: objects = [
         {
             name: string = "test",
@@ -580,7 +593,6 @@ strict {
             tags: strings = ["__test"],
         }
     ],
-    templates: objects = [],
 }
 '''
 
@@ -683,6 +695,29 @@ run sys -v
 
 ---
 
+## Известные проблемы
+
+- **Запуск по тегам останавливается после первого скрипта.** Любая сгенерированная обёртка заканчивается
+  'os.exit(...)', поэтому 'run -r --tagged="..."' завершает процесс после **первого** скрипта, и
+  остальные не выполняются. Запуск по тегам фактически работает только для одного скрипта. С
+  '--parallel' скрипты стартуют, но 'os.exit' конкурирует между горутинами в общем Lua-состоянии,
+  и вывод может дублироваться.
+- **Скрипты '.task.lua' не запускаются.** Встроенная tal-обёртка вызывает Lua-функцию 'cli(...)',
+  которая не зарегистрирована, поэтому обёртка падает с синтаксической ошибкой Lua. Скрипты '.py',
+  '.sh', '.bat' и скрипты на кастомных шаблонах не затронуты.
+- **'script-remove' не удаляет файл обёртки.** Он только убирает запись из конфига; файл
+  'scripts/<name>.lua' остаётся на месте.
+- **'templ-add' без '--force'** на существующий 'ext' возвращает ошибку; с '--force' заменяет запись
+  и перезаписывает файл (без дублей).
+
+---
+
+## Лицензия
+
+Apache 2.0 - подробности в [LICENSE](LICENSE).
+
+---
+
 By Pt, 2026 - written using 'lc', 'tap', 'pack', 'tycl'.
 ```
 
@@ -693,7 +728,7 @@ By Pt, 2026 - written using 'lc', 'tap', 'pack', 'tycl'.
 ```md
 # run - script and task manager
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Release](https://img.shields.io/github/v/release/pt-main/run)](https://github.com/pt-main/run/releases)
 
@@ -707,6 +742,8 @@ go install github.com/pt-main/run/cmd/tal@latest
 **run** is a tool for managing scripts, scripting any scenarios in an embedded Lua-like language with incrementality, storing scripts in global/local storage, complete independence from system and platform (works anywhere Go compiles), and with built-in ways to distribute scripts, for example via GitHub.
 
 The project contains Task Lua (tal) inside itself - a task runner seamlessly integrated into run. More details can be read in the project [README](https://github.com/pt-main/run/blob/main/tal/README.md).
+
+> Russian version of this document: [README-RU.md](README-RU.md).
 
 ---
 
@@ -755,52 +792,104 @@ sudo mv run-linux-amd64 /usr/local/bin/run
 ### Via 'go install'
 
 '''bash
-go install github.com/pt-main/run@latest
+go install github.com/pt-main/run/cmd/run@latest
+go install github.com/pt-main/run/cmd/tal@latest   # optional, standalone tal
 '''
 
 **On first launch** run will create a structure in '~/run/':
 - 'config.tycl' - config with the list of scripts.
 - 'scripts/' - Lua wrappers for launching.
+- 'templates/' - bodies of custom wrapper templates.
 - 'base/' - original script files.
 
 ---
 
-
 ## Commands
+
+The CLI consists of the root parser 'run' and three subcommands: 'manage' (script and
+template management), 'sys' (system operations) and 'tal' (the bundled task runner).
+
+### Running scripts
 
 | Command | Description | Example |
 |---------|-------------|---------|
-| '-add <path> <name> [docs] [--force]' | Add a script (supports '.py', '.sh', '.bat', '.lua') | 'run -add script.py mypy' |
-| '-remove <name>' | Remove a script | 'run -remove mypy' |
-| '-list' | Show the list of scripts | 'run -list' |
-| '-install <url> [name] [description] [--force] [--args="..."]' | Install a script from an external source, or run a tal script for installation | |
-| '<name> [args...]' | Run a script (if the name does not match a command) | 'run mypy arg1' |
-| '-tag <name> <tags...>' | Add/remove tags. Use the '!' prefix for a tag to remove it. | 'run -tag mypy deploy prod' |
-| '-localmode [true/false]' | Enable/disable local mode, show the current script launch state | 'run -localmode true' |
-| '-r <name> [args...] [--tagged='...']' | Run a script | 'run -r mypy arg1 arg2' |
-| '-r --tagged="tag1;tag2;..."' | Run scripts with any of the tags | 'run -r --tagged="deploy;test"' |
-| '-r --tagged="..." --parallel' | Run scripts with the required tag in parallel | 'run -r --tagged="deploy;build" --parallel' |
-| '-r --tagged="..." --args=""' | Pass arguments to the script (if you need to avoid a conflict, for example with run flags, or not pass arguments) | 'run -r --tagged="deploy;build" --args="--tagged dev"','run -r --tagged="deploy;build" --parallel --args' - does not pass arguments instead of passing '--parallel' |
-| '-version' | Show the version of run and tal | 'run -version' |
+| '-r <name> [args...]' | Run a script by name (explicit form) | 'run -r mypy arg1 arg2' |
+| '<name> [args...]' | Run a script (when the name does not conflict with run commands) | 'run deploy --env=prod' |
+| '-r --tagged="tag1;tag2;..."' | Run all scripts carrying any of the given tags | 'run -r --tagged="deploy;test"' |
+| '-r --tagged="..." --parallel' | Run the tagged scripts in parallel | 'run -r --tagged="deploy;build" --parallel' |
+| '-r --tagged="..." --args="..."' | Pass arguments to the script (use it if arguments conflict with run flags) | 'run -r --tagged="deploy" --args="--tagged dev"' |
+| '-r --tagged="..." --args' | Pass **no** arguments, instead of passing run flags to the script | 'run -r --tagged="deploy" --parallel --args' |
 
-'--no_color' - flag disables colored output throughout the session.
+### Managing data: 'run manage'
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| 'run manage script-add <path> <name> [docs] [--force]' | Add a script (supports '.py', '.sh', '.bat', '.lua', '.task.lua', '.nd.task.lua') | 'run manage script-add ./deploy.py deploy "Deploy to production"' |
+| 'run manage script-remove <name>' | Remove a script from the config | 'run manage script-remove mypy' |
+| 'run manage list' | Show the list of registered scripts | 'run manage list' |
+| 'run manage tag <name> <tags...>' | Add/remove tags. Prefix a tag with '!' to remove it | 'run manage tag mypy deploy !prod dev' |
+| 'run manage install <url> [name] [description] [--force] [--args="..."]' | Install a script from an external source, or run a tal installation script | 'run manage install github.com/user/repo@main/deploy.py' |
+| 'run manage templ-add <ext> [file] [--source="..."] [--force]' | Add a wrapper template for an extension | 'run manage templ-add ".go" templ.txt' |
+| 'run manage templ-remove <ext>' | Remove a template | 'run manage templ-remove ".go"' |
+
+Aliases: 'scradd' = 'script-add', 'screm' = 'script-remove', 'tladd' = 'templ-add', 'tlrem' = 'templ-remove'.
+
+For details: 'run manage help'.
+
+### System operations: 'run sys'
+
+| Command | Description | Example |
+|---------|-------------|---------|
+| 'run sys version' | Show the versions of run and tal | 'run sys version' (alias: 'run sys -v') |
+| 'run sys localmode' | Show the current mode and the config path | 'run sys localmode' |
+| 'run sys localmode true' | Enable local mode | 'run sys localmode true' |
+| 'run sys localmode false' | Disable local mode | 'run sys localmode false' |
+
+Alias: '-lm' = 'localmode'.
+
+### Bundled task runner: 'run tal'
+
+All tal commands are available through 'run tal ...'. See the [tal README](https://github.com/pt-main/run/blob/main/tal/README.md).
+
+'''bash
+run tal init
+run tal update
+run tal list main.task.lua
+run tal run main.task.lua build
+'''
+
+### Built-in [tap](https://github.com/pt-main/tap) flags
+
+- '--verbose' - verbose output.
+- '--debug' - debug output.
+- '-h', '-help', 'help' - help.
+- '--no_color' - disable colored output for the session.
 
 ---
 
 ## Local mode
 
-By default run works globally (config in '~/run/').  
+By default run works globally (config in '~/run/').
 Enable local mode - and run will use '.run/' in the current folder:
 
 '''bash
-run -localmode true  # enable
-run -localmode false # disable
-run -localmode       # show state
+run sys localmode true   # enable
+run sys localmode false  # disable
+run sys localmode        # show state
 '''
 
 This is convenient for projects: scripts are stored in the repository and do not interfere with the global config.
 
-'--ll / --localmode / --gm / --globalmode' immediately after 'run' - launch in local/global mode; after completion, restores the mode set with 'run -localmode'.
+The flags '--lm', '--localmode', '--gm', '--globalmode' - placed immediately after 'run' - switch the mode
+only for the current invocation, and afterwards the mode set with 'run sys localmode' is restored.
+
+'''bash
+run --localmode manage list                  # show local scripts
+run --globalmode -r deploy                   # run a global script
+run --lm manage install github.com/pt-main/run-scripts@main/sysfetch.lua
+'''
+
+**Important**: the '--localmode' / '--globalmode' flag must come immediately after 'run'.
 
 ---
 
@@ -808,13 +897,125 @@ This is convenient for projects: scripts are stored in the repository and do not
 
 run automatically generates **Lua wrappers** that call the original scripts with the passed arguments.
 
+Built in:
+
 | Extension | Language | Note |
 |------------|------|------------|
 | '.py' | Python | Looks for 'python3', then 'python' |
 | '.sh' | Bash | Executes via 'bash' |
 | '.bat' | Batch | Executes via 'cmd /c' |
 | '.lua' | Lua | Executes directly (without a wrapper) |
-| '.task.lua' | Task Lua (Tal) | Executes via 'run tal run' |
+| '.task.lua' | Task Lua (Tal) | Runs the file as a tal task file (with dependencies) |
+| '.nd.task.lua' | Task Lua (Tal) | Same, but with dependency checking disabled ('nd' - no deps) |
+
+Any other extension is available through a [custom wrapper template](#custom-wrapper-templates).
+
+---
+
+## Custom wrapper templates
+
+For extensions that are not built in, you can add your own **wrapper template**. A template is a
+[Go 'text/template'](https://pkg.go.dev/text/template) file, and its output becomes the Lua script
+saved to 'scripts/<name>.lua'.
+
+The template body is **not stored in the config**: it lives in the 'templates/' directory, and
+'config.tycl' keeps only a file reference:
+
+'''tycl
+templates: objects = [
+    {
+        ext: string = ".rb",
+        file: string = "rb.templ",   // file inside templates/
+    }
+],
+'''
+
+### Available variables
+
+| Variable | Value |
+|------------|----------|
+| '{{.ext}}' | File extension, e.g. '.rb', '.go' |
+| '{{.name}}' | Internal name of the file inside 'base/' (used in 'script_path(...)') |
+
+The wrapper gets its generated name via 'script_path("{{.name}}")' - this is how it finds the original
+script in 'base/'.
+
+### Template selection order
+
+When 'run manage script-add' runs, the template is chosen like this:
+
+1. If the file name ends with '.nd.task.lua' or '.task.lua' - the built-in tal template is used.
+2. Otherwise a **custom** template is looked up, whose 'ext' is a suffix of the file name
+   (e.g. '.rb' for 'script.rb').
+3. If nothing matched - the template with an **empty** 'ext' (fallback) is taken.
+4. If there is no fallback either - the built-in templates for '.py', '.sh', '.bat', '.lua'.
+5. If nothing fits - the error 'Unsupportable file extension'.
+
+### Managing templates
+
+'''bash
+# from a file (the content is copied to templates/<ext>.templ)
+run manage templ-add ".rb" ruby-template.lua
+
+# from a string
+run manage templ-add ".rb" --source='...'
+
+# replace an existing one
+run manage templ-add ".rb" ruby-template.lua --force
+
+# remove (the file in templates/ is removed too)
+run manage templ-remove ".rb"     # or: run manage tlrem ".rb"
+'''
+
+> 'file' may also be an absolute or relative path - if it is absolute, it is read as is, otherwise it
+> is looked up in the 'templates/' directory.
+
+### Example: a template for Ruby
+
+File 'ruby-template.lua':
+
+'''lua
+-- === CONFIGURATION ===
+local script_file = script_path("{{.name}}")
+local args = get_args()
+-- =====================
+
+local function escape(arg)
+    if arg:match("[ \t\"']") then
+        return '"' .. arg:gsub('"', '\\"') .. '"'
+    end
+    return arg
+end
+
+local cmd = "ruby " .. escape(script_file)
+for _, a in ipairs(args) do
+    cmd = cmd .. " " .. escape(a)
+end
+
+local result = os.execute(cmd)
+os.exit(result or 0)
+'''
+
+Add it and use it:
+
+'''bash
+run manage templ-add ".rb" ruby-template.lua
+run manage script-add ./my_tool.rb mytool "My Ruby tool"
+run -r mytool arg1 arg2
+'''
+
+### Important notes
+
+- A template is a **Go template**, not Lua. '{{.ext}}' and '{{.name}}' are substituted before the file
+  is written to 'scripts/'.
+- The template body is the Lua code of the future wrapper. It must terminate correctly ('os.exit(...)').
+- One 'ext' = one template. Use '--force' to replace an existing one.
+- Template bodies live in 'templates/', and the 'templates' field of 'config.tycl' only keeps
+  '{ext, file}' - the config stays readable and templates can be edited and highlighted by ordinary
+  editors.
+- Old configs, where the template body was kept inline in the 'template' field, are migrated
+  automatically: the body is moved to 'templates/<ext>.templ' and only 'file' is left in the config.
+  The migration happens once, when the config is read.
 
 ---
 
@@ -825,10 +1026,11 @@ run automatically generates **Lua wrappers** that call the original scripts with
 ├── config.tycl          # Config in TYCL (strict contract)
 ├── scripts/             # Lua wrappers for launching
 │   └── myscript.lua
+├── templates/           # Bodies of custom wrapper templates
+│   └── rb.templ
 └── base/                # Original scripts
     └── myscript.py
 '''
-
 
 ### TYCL config
 
@@ -843,7 +1045,11 @@ strict {
         script: string,      // Name of the wrapper file (matches the Lua script name inside run/scripts, without extension)
         description: string, // Description
         tags: strings,       // Tags
-        ext: string,         // Extension (.py, .sh, .bat, .lua)
+        ext: string,         // Extension (.py, .sh, .bat, .lua, .task.lua)
+    },
+    templates: objects = strict {
+        ext: string,         // File extension
+        file: string,        // Template body file inside the templates/ dir
     },
 }
 '''
@@ -852,6 +1058,7 @@ The config is filled in automatically by the 'run' CLI; after the first launch i
 
 '''tycl
 {
+    templates: objects = [],
     scripts: objects = [
         {
             name: string = "test",
@@ -876,9 +1083,10 @@ Each wrapper is a Lua script that provides:
 - 'run_script(name, ...)' - run another script from the wrapper.
 - 'run_script_parallel(name, ...)' - runs the specified script asynchronously in a background thread. Does not block execution of the current script. All arguments after the name are passed to the called script.
 - 'wait()' - waits for all background scripts started via 'run_script_parallel' to finish. It is recommended to call it after starting parallel tasks to wait for their completion before the main script exits.
-- 'run_cli(args)' - run run cli with the passed arguments (as a string) in the current session.
+- 'run_cli(args)' - run the run cli with the passed arguments (as a string) in the current session.
 
 Example:
+
 '''lua
 run_script_parallel("build", "--release")
 run_script_parallel("test")
@@ -892,12 +1100,18 @@ wait()  -- wait for the build and tests to finish
 ### Adding a script
 
 '''bash
-run -add ~/projects/tools/deploy.py deploy "Deploy to production"
-run -list
+run manage script-add ~/projects/tools/deploy.py deploy "Deploy to production"
+run manage list
 # ╭─────── Scripts
 # ⎬─ deploy (.py):
 # │     Deploy to production
 # ╰───────
+'''
+
+Alias:
+
+'''bash
+run manage scradd ~/projects/tools/deploy.py deploy "Deploy to production"
 '''
 
 ### Running
@@ -905,32 +1119,76 @@ run -list
 '''bash
 run -r deploy --env=prod
 # or
-run deploy --env=prod # when the script name does not conflict with run commands
+run deploy --env=prod   # when the script name does not conflict with run commands
 '''
 
 ### Tags
 
 '''bash
-run -tag deploy prod utils
-run -r --tagged="prod"   # will run all scripts with the prod tag
+run manage tag deploy prod utils
+run -r --tagged="prod"    # will run all scripts with the prod tag
+'''
+
+Removing a tag:
+
+'''bash
+run manage tag deploy !utils
+'''
+
+### Installing from GitHub
+
+'''bash
+# a plain script file
+run manage install github.com/user/repo@main/deploy.py deploy "Prod deploy"
+
+# a tal installation script
+run manage install github.com/user/repo@main/run.task.lua --args="--version 1.2.3"
 '''
 
 ### Local mode
 
 '''bash
 cd ~/myproject
-run -localmode true
-run -add script.py build
+run sys localmode true
+run manage script-add script.py build
 # now the script will be saved in .run/
 '''
 
-or
+or for a single invocation:
 
 '''bash
-run --localmode add script.py build
+run --localmode manage script-add script.py build
 '''
 
-**Important**: for correct operation, the '--localmode' flag must be immediately after 'run'.
+### Version
+
+'''bash
+run sys version
+# or
+run sys -v
+'''
+
+---
+
+## Known issues
+
+- **Tagged run stops after the first script.** Every generated wrapper ends with 'os.exit(...)', so
+  'run -r --tagged="..."' terminates the process after the **first** script and the rest do not run.
+  Tagged runs effectively work for a single script only. With '--parallel' the scripts do start, but
+  'os.exit' races between goroutines sharing one Lua state, and the output may be duplicated.
+- **'.task.lua' scripts do not run.** The built-in tal wrapper calls a Lua function named 'cli(...)',
+  which is not registered, so the wrapper fails with a Lua syntax error. '.py', '.sh', '.bat' and
+  custom-template scripts are unaffected.
+- **'script-remove' leaves the wrapper file behind.** It only drops the entry from the config; the
+  'scripts/<name>.lua' file stays in place.
+- **'templ-add' without '--force'** on an existing 'ext' returns an error; with '--force' it replaces
+  the entry and rewrites the file (no duplicates).
+
+---
+
+## License
+
+Apache 2.0 - details in [LICENSE](LICENSE).
 
 ---
 
@@ -1045,16 +1303,16 @@ require (
 	github.com/dlclark/regexp2 v1.12.0
 	github.com/iancoleman/orderedmap v0.3.0
 	github.com/mattn/go-shellwords v1.0.14
-	github.com/pt-main/lc v1.5.7-f
+	github.com/pt-main/lc v1.5.8
 	github.com/pt-main/pack v1.2.0
-	github.com/pt-main/tap v1.4.14-0.20260922135441-c0b7d2c122cf
+	github.com/pt-main/tap/go v1.5.8
 	github.com/pt-main/tycl v1.3.8
 	github.com/yuin/gopher-lua v1.1.2
 )
 
 require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/pt-main/tap/go v1.5.8 // indirect
+	github.com/pt-main/tap v1.4.14 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 ```
@@ -1074,30 +1332,12 @@ github.com/iancoleman/orderedmap v0.3.0 h1:5cbR2grmZR/DiVt+VJopEhtVs9YGInGIxAoMJ
 github.com/iancoleman/orderedmap v0.3.0/go.mod h1:XuLcCUkdL5owUCQeF2Ue9uuw1EptkJDkXXS7VoV7XGE=
 github.com/mattn/go-shellwords v1.0.14 h1:yUKzIgsCnosndOASY6/enly1EAuaXeFSQ7cdyA3OuYg=
 github.com/mattn/go-shellwords v1.0.14/go.mod h1:EZzvwXDESEeg03EKmM+RmDnNOPKG4lLtQsUlTZDWQ8Y=
-github.com/pt-main/lc v1.5.6 h1:YLRawKqIIQX4b3hFiPHfgTk7jvv1PRAk8RofWfBG8ZA=
-github.com/pt-main/lc v1.5.6/go.mod h1:uUxWI4oiOkia6Tko+cgF+O3fhGZF3of1NSHeTEjOaMU=
-github.com/pt-main/lc v1.5.7-f h1:YD9nMphPA62n7ztrgxvA7nTOloDi7rXJPuKL0AD/L84=
-github.com/pt-main/lc v1.5.7-f/go.mod h1:uUxWI4oiOkia6Tko+cgF+O3fhGZF3of1NSHeTEjOaMU=
-github.com/pt-main/pack v1.1.2 h1:I5mHCd3ax1dR7c7DeOvStpf6tuVNmA4iXgV9RIDfFWM=
-github.com/pt-main/pack v1.1.2/go.mod h1:RDJ+eUeINksFnliDhZGGDTxxbTB5aZoQW9nu4Ndz8UY=
-github.com/pt-main/pack v1.1.5 h1:v/hmUd/jy8cgf3e7/2PcBKE/v0J7hPplTFoeiCN7Tpc=
-github.com/pt-main/pack v1.1.5/go.mod h1:kvGNuw7AZOPGjCujs9gc/CkiYXoC78atKT1sI/hvqFA=
-github.com/pt-main/pack v1.1.6 h1:3r5ywoVfGA1dUpfb5OvnTrgergN79p81uowru3b85u8=
-github.com/pt-main/pack v1.1.6/go.mod h1:kvGNuw7AZOPGjCujs9gc/CkiYXoC78atKT1sI/hvqFA=
+github.com/pt-main/lc v1.5.8 h1:tP4IgM6ee5aHGS4bvTK2g4y14SlsOyJ0FQ3k+dONwPo=
+github.com/pt-main/lc v1.5.8/go.mod h1:uUxWI4oiOkia6Tko+cgF+O3fhGZF3of1NSHeTEjOaMU=
 github.com/pt-main/pack v1.2.0 h1:OvUclASpNwkMw96Xr0mzU3x4FWVWCslKuiJOCKKkLPI=
 github.com/pt-main/pack v1.2.0/go.mod h1:Se6SUhnOIQ4BblOVHVkOu9fUZxzdd7CSx36G/lNAhIA=
-github.com/pt-main/tap v1.4.11 h1:BXMrfXN4ZfX9df6yjYrCYVev9JkIyxNKOns6IaJDczU=
-github.com/pt-main/tap v1.4.11/go.mod h1:ULQUJ/+8VIji9oq26pr1cmbXv+VUlhjsvq1n/vd4f3I=
-github.com/pt-main/tap v1.4.13 h1:2KeJlw38nM4lOt6T3MZPuqTqp7UWmnGOeF1WfUbrXho=
-github.com/pt-main/tap v1.4.13/go.mod h1:ULQUJ/+8VIji9oq26pr1cmbXv+VUlhjsvq1n/vd4f3I=
-github.com/pt-main/tap v1.4.14-0.20260922135441-c0b7d2c122cf h1:jGjEFT5E7psvoeHqQgaBx30Rua49UuPOv/m01A+EzAM=
-github.com/pt-main/tap v1.4.14-0.20260922135441-c0b7d2c122cf/go.mod h1:M8UyfQ2yg3k/YZ9BUjoS8QYGdKu2l2aOEk3qwE2Qbgo=
 github.com/pt-main/tap v1.4.14 h1:DbFwrdnu5yqOgIKw1RSDrLNXk68CFNXUlkpi8QqDmOs=
 github.com/pt-main/tap v1.4.14/go.mod h1:ULQUJ/+8VIji9oq26pr1cmbXv+VUlhjsvq1n/vd4f3I=
-github.com/pt-main/tap v1.5.3 h1:fHskNl95OLVg02F8c4LeF5W1FG0inPyKGMzZXSDon1s=
-github.com/pt-main/tap v1.5.3/go.mod h1:N6lrtdlW90TqAp9pL08PjFchwcHQS62mjZybVUmHG6Y=
-github.com/pt-main/tap/go v1.5.7 h1:GzPXBjJETJcXAeQkosjBzwrBCe3RLkKCUWumK/KdBWg=
-github.com/pt-main/tap/go v1.5.7/go.mod h1:JhdaGAsrmcZVFSANOv8PlSuKcF0Uqx0Kad2XakiOPlM=
 github.com/pt-main/tap/go v1.5.8 h1:f2thGjf2OgcIq3Ehtpt3Fln5ZLSm7q33+eodMP416/k=
 github.com/pt-main/tap/go v1.5.8/go.mod h1:JhdaGAsrmcZVFSANOv8PlSuKcF0Uqx0Kad2XakiOPlM=
 github.com/pt-main/tycl v1.3.8 h1:TU7/axhLYE7l3TGmbvth3AfGQOorwI5uDnSO8FxeD54=
@@ -1117,33 +1357,7 @@ gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 ```go
 package run
 
-var Version = "1.3.4"
-```
-
----
-
-# rubytempl.txt
-
-```txt
--- === CONFIGURATION ===
-local script_file = script_path("{{.name}}")
-local args = get_args()
--- =====================
-
-local function escape(arg)
-    if arg:match("[ \t\"']") then
-        return '"' .. arg:gsub('"', '\\"') .. '"'
-    end
-    return arg
-end
-
-local cmd = "ruby " .. escape(script_file)
-for _, a in ipairs(args) do
-    cmd = cmd .. " " .. escape(a)
-end
-
-local result = os.execute(cmd)
-os.exit(result or 0)
+var Version = "1.4.0"
 ```
 
 ---
@@ -1157,6 +1371,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mattn/go-shellwords"
 	localmode "github.com/pt-main/run/run/api/localMode"
@@ -1184,6 +1399,10 @@ func ConfigDirScriptsPath() string {
 
 func ConfigDirBasePath() string {
 	return filepath.Join(ConfigDirPath(), "base")
+}
+
+func ConfigDirTemplatesPath() string {
+	return filepath.Join(ConfigDirPath(), "templates")
 }
 
 func ConfigDirConfigPath() string {
@@ -1237,6 +1456,76 @@ func NewRunScript(name, content string) error {
 	return utils.WriteF(filepath.Join(ConfigDirScriptsPath(), name+".lua"), content)
 }
 
+// TemplateFileName builds a file name for a template of the given extension.
+// It is used when a template is stored as a file instead of being inlined
+// into the config.
+func TemplateFileName(ext string) string {
+	name := strings.TrimPrefix(ext, ".")
+	if name == "" {
+		return "default.templ"
+	}
+	name = strings.Map(func(r rune) rune {
+		switch r {
+		case '/', '\\', ':', '*', '?', '"', '<', '>', '|', 0:
+			return '_'
+		}
+		return r
+	}, name)
+	if name == "" {
+		return "default.templ"
+	}
+	return name + ".templ"
+}
+
+// TemplatePath resolves a template 'file' value into an absolute path.
+// Absolute paths are returned as is, relative ones are resolved against
+// the templates dir.
+func TemplatePath(file string) string {
+	if file == "" {
+		return ""
+	}
+	if filepath.IsAbs(file) {
+		return file
+	}
+	return filepath.Join(ConfigDirTemplatesPath(), file)
+}
+
+func ReadTemplateFile(file string) (string, error) {
+	path := TemplatePath(file)
+	if path == "" {
+		return "", fmt.Errorf("Can't read template: file is not provided")
+	}
+	res, err := utils.OpenF(path)
+	if err != nil {
+		return "", fmt.Errorf("Can't read template file %q: %v", path, err)
+	}
+	return res, nil
+}
+
+func WriteTemplateFile(file, content string) error {
+	path := TemplatePath(file)
+	if path == "" {
+		return fmt.Errorf("Can't write template: file is not provided")
+	}
+	if dir := filepath.Dir(path); dir != "" {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return err
+		}
+	}
+	return utils.WriteF(path, content)
+}
+
+func RemoveTemplateFile(file string) error {
+	path := TemplatePath(file)
+	if path == "" {
+		return nil
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
 func NewScript(name, content string) error {
 	return utils.WriteF(filepath.Join(ConfigDirBasePath(), name), content)
 }
@@ -1260,6 +1549,9 @@ func InstallConfigDir() error {
 		return err
 	}
 	if err := os.Mkdir(ConfigDirBasePath(), 0755); err != nil {
+		return err
+	}
+	if err := os.Mkdir(ConfigDirTemplatesPath(), 0755); err != nil {
 		return err
 	}
 	conf, err := StdLib()
@@ -1475,9 +1767,9 @@ func NewLuaState(args []string) *lua.LState {
 package api
 
 import (
+	"errors"
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"text/template"
 
@@ -1488,6 +1780,61 @@ import (
 	"github.com/pt-main/tycl/utils"
 )
 
+// LegacyTyclContract is the old contract where templates were stored inline
+// in the config. It is only used to detect and migrate old configs.
+const LegacyTyclContract = '
+flexible {
+	scripts: objects = flexible {
+		name: string,
+		script: string,
+		description: string,
+		tags: strings,
+		ext: string,
+	},
+	templates: objects = flexible {
+		ext: string,
+		template: string,
+	},
+}
+'
+
+// MigrateTemplates moves inline templates (old 'template' field) into the
+// templates dir and replaces them with a 'file' reference. Returns true when
+// the config has been changed.
+func MigrateTemplates(cfg *shared.Config) (bool, error) {
+	if _, ok := cfg.InnerArrV["templates"]; !ok {
+		return false, nil
+	}
+	changed := false
+	templates := []*shared.Config{}
+	for _, templ := range cfg.InnerArrV["templates"] {
+		content, has := templ.StringV["template"]
+		if !has {
+			templates = append(templates, templ)
+			continue
+		}
+		ext := templ.StringV["ext"]
+		file, hasFile := templ.StringV["file"]
+		if hasFile && file != "" {
+			// already migrated, drop the legacy field
+			delete(templ.StringV, "template")
+			templates = append(templates, templ)
+			changed = true
+			continue
+		}
+		file = TemplateFileName(ext)
+		if err := WriteTemplateFile(file, content); err != nil {
+			return changed, err
+		}
+		delete(templ.StringV, "template")
+		templ.StringV["file"] = file
+		templates = append(templates, templ)
+		changed = true
+	}
+	cfg.InnerArrV["templates"] = templates
+	return changed, nil
+}
+
 func GetCfg() (*shared.Config, error) {
 	file, err := utils.OpenF(ConfigDirConfigPath())
 	if err != nil {
@@ -1496,7 +1843,23 @@ func GetCfg() (*shared.Config, error) {
 	var errI core.ErrorInterface
 	cfg, errI := tycl.Process(file, TyclContract, true)
 	if errI != nil {
-		return cfg, fmt.Errorf(format.FormatError(errI))
+		// old configs keep template contents inline, try to migrate them
+		var legacyErrI core.ErrorInterface
+		legacyCfg, legacyErrI := tycl.Process(file, LegacyTyclContract, true)
+		if legacyErrI != nil {
+			return cfg, errors.New(format.FormatError(errI))
+		}
+		migrated, mErr := MigrateTemplates(legacyCfg)
+		if mErr != nil {
+			return legacyCfg, mErr
+		}
+		if !migrated {
+			return cfg, errors.New(format.FormatError(errI))
+		}
+		if err := UpdateConfig(legacyCfg); err != nil {
+			return legacyCfg, err
+		}
+		return legacyCfg, nil
 	}
 	if _, ok := cfg.InnerArrV["templates"]; !ok {
 		cfg.InnerArrV["templates"] = []*shared.Config{}
@@ -1539,7 +1902,7 @@ func AddScript(conf *shared.Config, script, rawScriptName, scriptName, docs stri
 		runScript = TalRunScriptTemplate(rawScriptName, true)
 	}
 
-	var fallback *string
+	var fallbackFile *string
 
 	parseTempl := func(templ string) error {
 		tpl, err := template.New(ext).Parse(templ)
@@ -1559,13 +1922,20 @@ func AddScript(conf *shared.Config, script, rawScriptName, scriptName, docs stri
 		templs := conf.InnerArrV["templates"]
 		for _, cfg := range templs {
 			ext := cfg.StringV["ext"]
-			templ := cfg.StringV["template"]
+			file := cfg.StringV["file"]
 
 			if ext == "" {
-				fallback = &templ
+				if file != "" {
+					f := file
+					fallbackFile = &f
+				}
 			}
 
 			if strings.HasSuffix(rawScriptName, ext) && ext != "" {
+				templ, err := ReadTemplateFile(file)
+				if err != nil {
+					return err
+				}
 				if err := parseTempl(templ); err != nil {
 					return err
 				}
@@ -1574,8 +1944,12 @@ func AddScript(conf *shared.Config, script, rawScriptName, scriptName, docs stri
 		}
 	}
 
-	if fallback != nil && !processed {
-		if err := parseTempl(*fallback); err != nil {
+	if fallbackFile != nil && !processed {
+		templ, err := ReadTemplateFile(*fallbackFile)
+		if err != nil {
+			return err
+		}
+		if err := parseTempl(templ); err != nil {
 			return err
 		}
 		processed = true
@@ -1622,14 +1996,17 @@ func AddTemplate(conf *shared.Config, ext, template string, force bool) error {
 		tExt := templ.StringV["ext"]
 		if tExt == ext && !force {
 			return fmt.Errorf("Can't add template: extension duplicate and has no force flag")
-		} else {
+		} else if tExt != ext {
 			templatesA = append(templatesA, templ)
 		}
 	}
+	file := TemplateFileName(ext)
+	if err := WriteTemplateFile(file, template); err != nil {
+		return err
+	}
 	c := shared.NewNilConfig()
 	c.StringV["ext"] = ext
-	res := strconv.Quote(template)
-	c.StringV["template"] = res
+	c.StringV["file"] = file
 	templatesA = append(templatesA, c)
 	conf.InnerArrV["templates"] = templatesA
 	return nil
@@ -1641,8 +2018,12 @@ func RemoveTemplate(conf *shared.Config, ext string) error {
 	for _, templ := range templates {
 		tExt := templ.StringV["ext"]
 		if tExt == ext {
-			templatesA = append(templatesA, templ)
+			if err := RemoveTemplateFile(templ.StringV["file"]); err != nil {
+				return err
+			}
+			continue
 		}
+		templatesA = append(templatesA, templ)
 	}
 	conf.InnerArrV["templates"] = templatesA
 	return nil
@@ -1724,23 +2105,16 @@ local args = get_args()
 local deps_enabled = %v
 -- =====================
 
-local function escape(arg)
-    if arg:match("[ \t\"']") then
-        return '"' .. arg:gsub('"', '\\"') .. '"'
-    end
-    return arg
-end
-
-local cmd = "tal run "
+local cmd = {}
 if deps_enabled then
-    cmd = cmd .. "--deps="" "
+    cmd[#cmd + 1] = "--deps="
 end
-cmd = cmd .. escape(task_name)
+cmd[#cmd + 1] = task_name
 for _, a in ipairs(args) do
-    cmd = cmd .. " " .. escape(a)
+    cmd[#cmd + 1] = a
 end
 
-local result = cli(cmd)
+local result = tal_run(cmd)
 os.exit(result or 0)', name, depsEnabled)
 }
 
@@ -1872,7 +2246,7 @@ flexible {
 	},
 	templates: objects = strict {
 		ext: string,
-		template: string,
+		file: string,
 	},
 }
 '
@@ -1896,6 +2270,11 @@ import (
 	tap "github.com/pt-main/tap/go"
 	lua "github.com/yuin/gopher-lua"
 )
+
+// sysDispatch routes the 'run sys' group. It is set by NewCli and is called by
+// Process instead of tap's own subcommand handling, which is broken upstream
+// (see NewSys).
+var sysDispatch func(p *tap.Parser, args []string) error
 
 func NewCli() (*tap.Parser, error) {
 	var lp *tap.Parser
@@ -1942,7 +2321,11 @@ func NewCli() (*tap.Parser, error) {
 	}
 	p.AddSubcommand("manage", m)
 
-	p.AddSubcommand("sys", NewSys())
+	sysP, sysCmds := NewSys()
+	p.AddSubcommand("sys", sysP)
+	sysDispatch = func(p *tap.Parser, args []string) error {
+		return dispatchSys(p, sysCmds, args)
+	}
 
 	runcli := func(L *lua.LState) int {
 		input := L.OptString(1, "")
@@ -1989,6 +2372,7 @@ func NewCli() (*tap.Parser, error) {
 package runlib
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -2133,7 +2517,7 @@ func MakeRunHandler(hasRawArgs bool) func(p *tap.Parser, s []string) error {
 			if len(errs) == 0 {
 				return nil
 			}
-			return fmt.Errorf(" - " + strings.Join(errs, "\n - "))
+			return errors.New(" - " + strings.Join(errs, "\n - "))
 		} else {
 			if len(s) < 1 {
 				return fmt.Errorf("Invalid argument length: need more or equals to 1")
@@ -2343,7 +2727,6 @@ import (
 
 	"github.com/pt-main/run/run/api"
 	tap "github.com/pt-main/tap/go"
-	"github.com/pt-main/tycl/shared"
 	"github.com/pt-main/tycl/utils"
 )
 
@@ -2378,13 +2761,9 @@ func TemplateRem(p *tap.Parser, s []string) error {
 	if err != nil {
 		return err
 	}
-	templates := []*shared.Config{}
-	for _, templ := range cfg.InnerArrV["templates"] {
-		if templ.StringV["ext"] == s[0] {
-			templates = append(templates, templ)
-		}
+	if err := api.RemoveTemplate(cfg, s[0]); err != nil {
+		return err
 	}
-	cfg.InnerArrV["templates"] = templates
 	return api.UpdateConfig(cfg)
 }
 ```
@@ -2440,7 +2819,9 @@ func NewManage() (p *tap.Parser, err error) {
   [?GN]--force[?RT]         Overwrite existing template for this extension
 [?YW]Examples:[?RT]
   [?BBK]run manage templ-add ".go" templ.txt --force[?RT]
-  [?BBK]run manage templ-add ".go" --source="..."[?RT]',
+  [?BBK]run manage templ-add ".go" --source="..."[?RT]
+[?YW]Note:[?RT]
+  [?BBK]Template body is saved to the templates/ dir, the config only keeps the file reference.[?RT]',
 		[]string{"ext"}, []string{"file"}, false)
 	if err = manageP.AddAlias("tladd", "templ-add"); err != nil {
 		return
@@ -2451,7 +2832,9 @@ func NewManage() (p *tap.Parser, err error) {
 [?BBK]Usage:[?RT]
   [?BBK]run manage templ-remove <ext>[?RT]
 [?YW]Example:[?RT]
-  [?BBK]run manage templ-rem ".go"[?RT]',
+  [?BBK]run manage templ-rem ".go"[?RT]
+[?YW]Note:[?RT]
+  [?BBK]The template file in the templates/ dir is removed too.[?RT]',
 		[]string{"ext"}, nil, false)
 	if err = manageP.AddAlias("tlrem", "templ-remove"); err != nil {
 		return
@@ -2542,7 +2925,6 @@ func Process(cli *tap.Parser, args []string) error {
 	}
 
 	err = cli.Parse(args)
-	fmt.Println(cli.RawArgs, cli.Flags)
 	if err != nil {
 		return err
 	}
@@ -2559,6 +2941,7 @@ package runcli
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/pt-main/run"
 	"github.com/pt-main/run/run/api"
@@ -2567,15 +2950,50 @@ import (
 	tap "github.com/pt-main/tap/go"
 )
 
-func NewSys() *tap.Parser {
+// Commands holds the handlers of the 'run sys' subcommand group.
+type SysCommands struct {
+	Version   func(p *tap.Parser, s []string) error
+	Localmode func(p *tap.Parser, s []string) error
+}
+
+// NewSys builds the 'run sys' sub-parser and returns the command handlers, so
+// that Process can dispatch them itself.
+//
+// Why not let tap route the call? tap's Parser._call_subcommand locates the
+// arguments of a subcommand by looking for the literal string "self" in
+// RawArgs instead of the subcommand name. On the published tap v1.5.8 that
+// never matches "sys", so the subcommand parser receives an empty argument
+// list and every 'run sys ...' invocation ends in "Has no command". Because
+// that behaviour is hardcoded in the dependency, Process dispatches the sys
+// group manually (see sysCommandNames/sysArgCount below).
+func NewSys() (*tap.Parser, *SysCommands) {
 	sysP := tap.NewParser("sys", "[?GN]Run systems.[?RT]", []string{"help", "-help", "-h"}, tap.DefaultParserConfig())
 
-	sysP.AddCommand("version", func(p *tap.Parser, s []string) error {
-		fmt.Println("run v" + run.Version)
-		fmt.Println("tal v" + tal.Version)
-		fmt.Println("humanmade, by Pt, Apache 2.0 licence")
-		return nil
-	},
+	cmds := &SysCommands{
+		Version: func(p *tap.Parser, s []string) error {
+			fmt.Println("run v" + run.Version)
+			fmt.Println("tal v" + tal.Version)
+			fmt.Println("humanmade, by Pt, Apache 2.0 licence")
+			return nil
+		},
+		Localmode: func(p *tap.Parser, s []string) error {
+			if len(s) == 0 {
+				fmt.Println("localmode:", localmode.IsLocalmode(), "| path:", api.ConfigDirPath())
+				return nil
+			}
+			switch s[0] {
+			case "true":
+				localmode.Set(true)
+			case "false":
+				localmode.Set(false)
+			default:
+				return fmt.Errorf("Invalid argument")
+			}
+			return nil
+		},
+	}
+
+	sysP.AddCommand("version", cmds.Version,
 		'[?GN]Show version and license information.[?RT]
 [?BBK]Usage:[?RT]
   [?BBK]run sys version[?RT]',
@@ -2584,21 +3002,7 @@ func NewSys() *tap.Parser {
 		panic("SYSTEM ERROR: CREATING CLI: " + err.Error())
 	}
 
-	sysP.AddCommand("localmode", func(p *tap.Parser, s []string) error {
-		if len(s) == 0 {
-			fmt.Println("localmode:", localmode.IsLocalmode(), "| path:", api.ConfigDirPath())
-			return nil
-		}
-		switch s[0] {
-		case "true":
-			localmode.Set(true)
-		case "false":
-			localmode.Set(false)
-		default:
-			return fmt.Errorf("Invalid argument")
-		}
-		return nil
-	},
+	sysP.AddCommand("localmode", cmds.Localmode,
 		'[?GN]Set or show the current working mode (global/local).[?RT]
 [?BBK]Usage:[?RT]
   [?BBK]run sys localmode[?RT]           Show current mode and config path
@@ -2612,7 +3016,58 @@ func NewSys() *tap.Parser {
 		panic("SYSTEM ERROR: CREATING CLI: " + err.Error())
 	}
 
-	return sysP
+	return sysP, cmds
+}
+
+// sysCommandNames maps every accepted 'run sys' command name (aliases included)
+// to its handler.
+func sysCommandNames(cmds *SysCommands) []struct {
+	Name    string
+	Handler func(p *tap.Parser, s []string) error
+	MinArgs int
+	MaxArgs int // -1 = unlimited
+} {
+	return []struct {
+		Name    string
+		Handler func(p *tap.Parser, s []string) error
+		MinArgs int
+		MaxArgs int
+	}{
+		{"version", cmds.Version, 0, 0},
+		{"-v", cmds.Version, 0, 0},
+		{"localmode", cmds.Localmode, 0, 1},
+		{"-lm", cmds.Localmode, 0, 1},
+	}
+}
+
+// dispatchSys runs the 'run sys' group on the given positional arguments.
+// It mirrors what tap would do, minus the broken subcommand routing.
+func dispatchSys(p *tap.Parser, cmds *SysCommands, args []string) error {
+	// help is the first positional argument: 'run sys help [cmd]'
+	if len(args) > 0 && (args[0] == "help" || args[0] == "-h" || args[0] == "-help") {
+		return p.Parse([]string{"help"})
+	}
+	if len(args) == 0 {
+		return p.Parse(args) // prints the about block plus the help hint
+	}
+	for _, cmd := range sysCommandNames(cmds) {
+		if args[0] != cmd.Name {
+			continue
+		}
+		rest := args[1:]
+		if len(rest) < cmd.MinArgs || (cmd.MaxArgs >= 0 && len(rest) > cmd.MaxArgs) {
+			return fmt.Errorf("Invalid argument length: %d.", len(rest))
+		}
+		return cmd.Handler(p, rest)
+	}
+	// Unknown command: let tap produce its standard error message.
+	return p.Parse(args)
+}
+
+// isModeFlag reports whether arg is one of the one-shot mode flags that must
+// sit immediately after 'run'.
+func isModeFlag(arg string) bool {
+	return slices.Contains([]string{"--lm", "--localmode", "--gm", "--globalmode"}, arg)
 }
 ```
 
@@ -2623,9 +3078,9 @@ func NewSys() *tap.Parser {
 ```md
 # tal - инкрементальный таскер с Lua и зависимостями
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/tal.svg)](https://pkg.go.dev/github.com/pt-main/tal)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Release](https://img.shields.io/github/v/release/pt-main/tal)](https://github.com/pt-main/tal/releases)
+[![Release](https://img.shields.io/github/v/release/pt-main/run)](https://github.com/pt-main/run/releases)
 
 > tal - Task Lua
 
@@ -2787,7 +3242,7 @@ tal run main.task.lua build --deps="main.go;go.mod"
 
 ## Лицензия
 
-Apache 2.0 - подробности в [LICENSE](LICENSE).
+Apache 2.0 - подробности в [LICENSE](../LICENSE).
 
 ---
 
@@ -2801,9 +3256,9 @@ By Pt, 2026 - написано с использованием 'lc', 'tap', 'pac
 ```md
 # tal - incremental task runner with Lua and dependencies
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/tal.svg)](https://pkg.go.dev/github.com/pt-main/tal)
+[![Go Reference](https://pkg.go.dev/badge/github.com/pt-main/run.svg)](https://pkg.go.dev/github.com/pt-main/run)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-yellow.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Release](https://img.shields.io/github/v/release/pt-main/tal)](https://github.com/pt-main/tal/releases)
+[![Release](https://img.shields.io/github/v/release/pt-main/run)](https://github.com/pt-main/run/releases)
 
 > tal - Task Lua
 
@@ -2965,7 +3420,7 @@ When tal is used from 'run cli', an additional function becomes available - 'run
 
 ## License
 
-Apache 2.0 - details in [LICENSE](LICENSE).
+Apache 2.0 - details in [LICENSE](../LICENSE).
 
 ---
 
@@ -3830,7 +4285,7 @@ func NewTalLuaState(changedFiles, args []string) *lua.LState {
 	}))
 
 	L.SetGlobal("print_colored", L.NewFunction(func(L *lua.LState) int {
-		color.PrintColored(L.CheckString(1))
+		color.PrintColored("%s", L.CheckString(1))
 		return 1
 	}))
 
@@ -4039,7 +4494,7 @@ func ListHandler(p *tap.Parser, s []string) error {
 			res = append(res, fmt.Sprintf(templ, idx, "Main"))
 		}
 		res = append(res, "[?GN]╰───────[?RT]")
-		color.PrintlnColored(strings.Join(res, "\n"))
+		color.PrintlnColored("%s", strings.Join(res, "\n"))
 	}
 	return nil
 }
@@ -4183,6 +4638,220 @@ update()
 ```lua
 -- @
 print("Working")
+```
+
+---
+
+# test/README.md
+
+```md
+# Локальный тест 'run'
+
+Папка для ручной проверки утилиты в localmode ('~/run' заменяется на './.run').
+
+## Запуск
+
+'''bash
+# из корня репозитория
+go build -o /tmp/runbin ./cmd/run
+
+cd test
+/tmp/runbin manage list          # .run создастся автоматически при первом запуске
+'''
+
+> Если '.run' уже существует, автосоздание не происходит — 'CheckConfigDir'
+> смотрит только на наличие папки. Для чистого прогона удалите её:
+> 'rm -rf .run'.
+
+## Что проверяем
+
+Шаблоны лежат в '.run/templates/', в 'config.tycl' — только ссылки '{ext, file}'.
+
+'''bash
+# шаблоны: ruby (.rb) и fallback (пустой ext)
+/tmp/runbin manage templ-add ".rb" tpl-ruby.templ
+/tmp/runbin manage templ-add ""    tpl-fallback.templ
+
+# скрипты
+/tmp/runbin manage script-add ./hello.rb        hello "Ruby hello"
+/tmp/runbin manage script-add ./tool.unknownext tool  "Fallback test"
+/tmp/runbin manage script-add ./deploy.sh       deploy "Bash test"
+/tmp/runbin manage script-add ./calc.py         calc   "Python test"
+
+# запуск
+/tmp/runbin -r hello world foo
+/tmp/runbin -r tool alpha beta
+/tmp/runbin -r deploy prod
+'''
+
+## Ожидаемое поведение выбора шаблона
+
+| Файл | Шаблон | Команда в обёртке |
+|------|--------|-------------------|
+| 'hello.rb' | '.rb' → 'templates/rb.templ' | 'ruby <file>' |
+| 'tool.unknownext' | пустой ext → 'templates/default.templ' | 'sh <file>' |
+| 'deploy.sh' | встроенный '.sh' (если fallback удалён) | 'bash <file>' |
+| 'calc.py' | встроенный '.py' (если fallback удалён) | авто-детект 'python3'/'python' |
+
+**Важно:** fallback с пустым 'ext' проверяется **до** встроенных шаблонов,
+поэтому пока он есть в конфиге, '.sh'/'.py'/'.bat' уйдут в него.
+Чтобы проверить встроенные — удалите fallback: 'manage templ-remove ""'.
+
+## Миграция старого конфига
+
+Если в 'config.tycl' тело шаблона лежит в поле 'template', оно автоматически
+выносится в '.run/templates/<ext>.templ', а в конфиге остаётся 'file'.
+Миграция срабатывает один раз при чтении конфига и идемпотентна.
+
+## Известные особенности (не связаны с хранением шаблонов)
+
+- **Тегированный запуск.** Любая обёртка заканчивается 'os.exit(...)', поэтому
+  при '-r --tagged="..."' процесс завершается после **первого** скрипта —
+  остальные не выполняются. Это работает только для одиночного запуска.
+  С '--parallel' скрипты стартуют, но 'os.exit' конкурирует между горутинами
+  в общем Lua-состоянии, и вывод может дублироваться.
+- **'.task.lua' / '.nd.task.lua' не запускаются.** Встроенная tal-обёртка
+  вызывает несуществующую Lua-функцию 'cli(...)', поэтому падает с
+  синтаксической ошибкой. Проверять '.py', '.sh' и кастомные шаблоны.
+- **'script-remove'** убирает запись из конфига, но не удаляет файл обёртки
+  из '.run/scripts/'.
+- **'templ-add' без '--force'** на существующий 'ext' возвращает ошибку;
+  с '--force' заменяет запись и перезаписывает файл (без дублей).
+
+> Если 'run' собран против неопубликованной/исправленной версии 'tap',
+> подкоманды 'manage' и 'sys' могут не работать: они не находят свои команды и
+> печатают «Has no command». Проверяйте 'run manage list' сразу после сборки.
+```
+
+---
+
+# test/calc.py
+
+```py
+#!/usr/bin/env python3
+# A python test script: reports args and runs a trivial computation.
+import sys
+print("PYTHON: argc =", len(sys.argv) - 1)
+for i, a in enumerate(sys.argv[1:]):
+    print(f"PYTHON: arg[{i}] = {a}")
+print("PYTHON: sum =", sum(range(10)))
+```
+
+---
+
+# test/deploy.sh
+
+```sh
+#!/usr/bin/env bash
+# A bash test script: reports args and its own name.
+echo "BASH: script = $(basename "$0")"
+echo "BASH: argc = $#"
+i=1
+for a in "$@"; do
+  echo "BASH: arg[$i] = $a"
+  i=$((i+1))
+done
+echo "BASH: pwd = $(pwd)"
+```
+
+---
+
+# test/hello.rb
+
+```rb
+#!/usr/bin/env ruby
+# A ruby test script: greets, echoes its args, and reads a file given as arg.
+name = ARGV.shift || "world"
+puts "RUBY: hello #{name}"
+ARGV.each_with_index do |a, i|
+  puts "RUBY: arg[#{i}] = #{a}"
+end
+if File.exist?(name)
+  puts "RUBY: file first line = #{File.readlines(name).first.to_s.chomp}"
+end
+puts "RUBY: done"
+```
+
+---
+
+# test/inline.lua
+
+```lua
+print("LUA: inline script body")
+local args = get_args()
+for i, a in ipairs(args) do
+  print("LUA: arg " .. i .. " = " .. tostring(a))
+end
+print("LUA: done")
+```
+
+---
+
+# test/tool.unknownext
+
+```unknownext
+#!/usr/bin/env bash
+# Unknown extension on purpose: proves the empty-ext fallback template is used.
+echo "FALLBACK-SCRIPT: this is the original unknown-extension body"
+i=1
+for a in "$@"; do
+  echo "FALLBACK-SCRIPT: arg[$i] = $a"
+  i=$((i+1))
+done
+echo "FALLBACK-SCRIPT: done"
+```
+
+---
+
+# test/tpl-fallback.templ
+
+```templ
+-- === CONFIGURATION ===
+-- FALLBACK template: runs the original file directly with its shebang.
+local script_file = script_path("{{.name}}")
+local args = get_args()
+-- =====================
+
+local function escape(arg)
+    if arg:match("[ \t\"']") then
+        return '"' .. arg:gsub('"', '\\"') .. '"'
+    end
+    return arg
+end
+
+local cmd = "sh " .. escape(script_file)
+for _, a in ipairs(args) do
+    cmd = cmd .. " " .. escape(a)
+end
+
+local result = os.execute(cmd)
+os.exit(result or 0)
+```
+
+---
+
+# test/tpl-ruby.templ
+
+```templ
+-- === CONFIGURATION ===
+local script_file = script_path("{{.name}}")
+local args = get_args()
+-- =====================
+
+local function escape(arg)
+    if arg:match("[ \t\"']") then
+        return '"' .. arg:gsub('"', '\\"') .. '"'
+    end
+    return arg
+end
+
+local cmd = "ruby " .. escape(script_file)
+for _, a in ipairs(args) do
+    cmd = cmd .. " " .. escape(a)
+end
+
+local result = os.execute(cmd)
+os.exit(result or 0)
 ```
 
 ---
