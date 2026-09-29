@@ -13,12 +13,14 @@ func NewLexer() *stringParsing.Lexer {
 			Pattern: regexp2.MustCompile(`"([^"\\]|\\.)*"`, 0),
 		},
 		{
-			// lc/v2 matches rules against the whole rune slice anchored at the
-			// current position, so "^" is a real line start again and no longer
-			// swallows the newline in front of a "-- #cmd" annotation. Emitting
-			// newlines as their own token type keeps the previous token stream,
-			// and the parser skips them as ignorable.
-			Type:    "WHITESPACE",
+			// Newlines must stay in the code stream: the generated Lua is
+			// assembled by concatenating the raw text of the CODE tokens, so a
+			// newline emitted as an ignorable token would be dropped and would
+			// glue statements together ("end" + "print(...)" -> "endprint(...)"),
+			// which is a Lua parse error. Emitting them as CODE keeps the "^\s*"
+			// annotation rules working, because those rules still match at a
+			// real line start while newlines are their own CODE token.
+			Type:    "CODE",
 			Pattern: regexp2.MustCompile(`\n+`, 0),
 		},
 		{
