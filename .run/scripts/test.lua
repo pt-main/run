@@ -1,1 +1,0 @@
-print("test script"); print(script_path("test.py")); print(get_args()[1])

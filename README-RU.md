@@ -16,6 +16,8 @@ go install github.com/pt-main/run/cmd/tal@latest
 Проект содержит внутри себя Task Lua (tal) - таскер, бесшовно интегрированный в run. Подробнее можно прочитать в [README](https://github.com/pt-main/run/blob/main/tal/README.md) проекта.
 
 > Английская версия этого документа: [README.md](README.md).
+>
+> Ченджлог: [docs/changelog-ru.md](docs/changelog-ru.md) | [English version](docs/changelog.md).
 
 ---
 

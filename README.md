@@ -16,6 +16,8 @@ go install github.com/pt-main/run/cmd/tal@latest
 The project contains Task Lua (tal) inside itself - a task runner seamlessly integrated into run. More details can be read in the project [README](https://github.com/pt-main/run/blob/main/tal/README.md).
 
 > Russian version of this document: [README-RU.md](README-RU.md).
+>
+> Changelog: [docs/changelog.md](docs/changelog.md) | [Russian version](docs/changelog-ru.md).
 
 ---
 
