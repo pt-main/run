@@ -8,22 +8,25 @@ import (
 	tap "github.com/pt-main/tap/go"
 )
 
+// Process parses args, honouring a mode flag that overrides the stored
+// localmode only for this invocation.
 func Process(cli *tap.Parser, args []string) error {
-	lm := localmode.IsLocalmode()
-	temp := lm
+	stored := localmode.IsLocalmode()
+	current := stored
 
 	if len(args) > 0 {
-		if args[0] == "--localmode" || args[0] == "--lm" {
-			temp = true
-		} else if args[0] == "--globalmode" || args[0] == "--gm" {
-			temp = false
+		switch args[0] {
+		case "--localmode", "--lm":
+			current = true
+		case "--globalmode", "--gm":
+			current = false
 		}
 	}
-	localmode.Set(temp)
+	localmode.Set(current)
 
 	defer func() {
-		if localmode.IsLocalmode() == temp {
-			localmode.Set(lm)
+		if localmode.IsLocalmode() == current {
+			localmode.Set(stored)
 		}
 	}()
 
@@ -37,9 +40,5 @@ func Process(cli *tap.Parser, args []string) error {
 		}
 	}
 
-	err = cli.Parse(args)
-	if err != nil {
-		return err
-	}
-	return nil
+	return cli.Parse(args)
 }

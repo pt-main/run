@@ -14,16 +14,16 @@ import (
 )
 
 func ConfigDirPath() string {
-	p, err := os.UserHomeDir()
 	dir := "run"
+	root, err := os.UserHomeDir()
 	if localmode.IsLocalmode() {
-		p, err = os.Getwd()
 		dir = ".run"
+		root, err = os.Getwd()
 	}
 	if err != nil {
 		panic("Config dir path finding:" + err.Error())
 	}
-	return filepath.Join(p, dir)
+	return filepath.Join(root, dir)
 }
 
 func ConfigDirScriptsPath() string {
@@ -102,9 +102,8 @@ func RemoveRunScript(name string) error {
 	return nil
 }
 
-// TemplateFileName builds a file name for a template of the given extension.
-// It is used when a template is stored as a file instead of being inlined
-// into the config.
+// TemplateFileName builds the file name a template of the given extension is
+// stored under.
 func TemplateFileName(ext string) string {
 	name := strings.TrimPrefix(ext, ".")
 	if name == "" {
@@ -181,31 +180,24 @@ func UpdateConfig(config *shared.Config) error {
 	if err != nil {
 		return err
 	}
-	if err := utils.WriteF(ConfigDirConfigPath(), conf); err != nil {
-		return err
-	}
-	return nil
+	return utils.WriteF(ConfigDirConfigPath(), conf)
 }
 
 func InstallConfigDir() error {
-	if err := os.Mkdir(ConfigDirPath(), 0755); err != nil {
-		return err
+	dirs := []string{
+		ConfigDirPath(),
+		ConfigDirScriptsPath(),
+		ConfigDirBasePath(),
+		ConfigDirTemplatesPath(),
 	}
-	if err := os.Mkdir(ConfigDirScriptsPath(), 0755); err != nil {
-		return err
-	}
-	if err := os.Mkdir(ConfigDirBasePath(), 0755); err != nil {
-		return err
-	}
-	if err := os.Mkdir(ConfigDirTemplatesPath(), 0755); err != nil {
-		return err
+	for _, dir := range dirs {
+		if err := os.Mkdir(dir, 0755); err != nil {
+			return err
+		}
 	}
 	conf, err := StdLib()
 	if err != nil {
 		return err
 	}
-	if err := utils.WriteF(ConfigDirConfigPath(), conf); err != nil {
-		return err
-	}
-	return nil
+	return utils.WriteF(ConfigDirConfigPath(), conf)
 }

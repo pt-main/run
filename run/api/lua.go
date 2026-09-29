@@ -4,7 +4,6 @@ import (
 	"log"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 
 	lua "github.com/yuin/gopher-lua"
 )
@@ -70,10 +69,7 @@ func NewLuaState(args []string) *lua.LState {
 		return 0
 	}))
 
-	var (
-		activeScripts int32
-		wg            sync.WaitGroup
-	)
+	var wg sync.WaitGroup
 
 	L.SetGlobal("run_script_parallel", L.NewFunction(func(L *lua.LState) int {
 		name := L.CheckString(1)
@@ -94,12 +90,10 @@ func NewLuaState(args []string) *lua.LState {
 			return 0
 		}
 
-		atomic.AddInt32(&activeScripts, 1)
 		wg.Add(1)
 
 		go func() {
 			defer wg.Done()
-			defer atomic.AddInt32(&activeScripts, -1)
 			defer func() {
 				if r := recover(); r != nil {
 					log.Printf("script %q panicked: %v", name, r)

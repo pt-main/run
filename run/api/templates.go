@@ -114,25 +114,3 @@ end
 local result = os.execute(cmd)
 os.exit(result or 0)`, fmt.Sprintf("%#v", name))
 }
-
-func LuaRunScriptTemplate(name string) string {
-	return fmt.Sprintf(`-- === CONFIGURATION ===
-local script_file = script_path(%v)
-local args = get_args()
--- =====================
-
-local function escape(arg)
-    if arg:match("[ \t\"']") then
-        return '"' .. arg:gsub('"', '\\"') .. '"'
-    end
-    return arg
-end
-
-local cmd = "lua " .. escape(script_file)
-for _, a in ipairs(args) do
-    cmd = cmd .. " " .. escape(a)
-end
-
-local result = os.execute(cmd)
-os.exit(result or 0)`, fmt.Sprintf("%#v", name))
-}

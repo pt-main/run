@@ -4,69 +4,68 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pt-main/lc/engine/core"
+	"github.com/pt-main/lc/v2/engine/core"
 	"github.com/pt-main/run/tal/lang"
 	"github.com/pt-main/run/tal/shared"
 )
 
 func GenerateCode(from *lang.TalCode) (string, core.ErrorInterface) {
-	t := &Tasker{
-		Functions: make([]string, 0),
-	}
-	res := ""
-	res += "-- ==== RUNTIME CODE ==== --\n"
-	res += GetRuntime() + "\n"
+	t := &Tasker{Functions: make([]string, 0, len(from.Blocks))}
+
+	var res strings.Builder
+	res.WriteString("-- ==== RUNTIME CODE ==== --\n")
+	res.WriteString(GetRuntime())
+	res.WriteString("\n")
+
 	if from.Global != nil {
-		res += "\n-- ==== GLOBAL CODE ==== --\n"
-		res += from.Global.Code + "\n"
+		res.WriteString("\n-- ==== GLOBAL CODE ==== --\n")
+		res.WriteString(from.Global.Code)
+		res.WriteString("\n")
 	}
-	for _, task := range from.Blocks {
-		err := t.GenerateTask(task)
-		if err != nil {
+
+	for _, block := range from.Blocks {
+		if err := t.GenerateTask(block); err != nil {
 			return "", err
 		}
 	}
-	res += "\n-- ==== TASKS DECLARATION ==== --\n"
-	res += strings.Join(t.Functions, "\n\n")
+
+	res.WriteString("\n-- ==== TASKS DECLARATION ==== --\n")
+	res.WriteString(strings.Join(t.Functions, "\n\n"))
+
 	if from.Main != nil {
-		res += "\n\n-- ==== MAIN CODE ==== --\n"
-		res += from.Main.Code + "\n"
+		res.WriteString("\n\n-- ==== MAIN CODE ==== --\n")
+		res.WriteString(from.Main.Code)
+		res.WriteString("\n")
 	}
-	return res, nil
+
+	return res.String(), nil
 }
 
+// Tasker collects the generated task declarations.
 type Tasker struct {
 	Functions []string
 }
 
 func (t *Tasker) GenerateTask(ts *lang.TalSection) (err core.ErrorInterface) {
-	res := ""
 	var patterns []string
 	for cmd, args := range ts.Cmds {
 		switch cmd {
 		case "depends":
-			parts := strings.Fields(args)
-			patterns = append(patterns, parts...)
-			continue
+			patterns = append(patterns, strings.Fields(args)...)
 		default:
-			err = core.Err(shared.GenerationError, "Unknown cmd")
+			return core.Wrap(shared.GenerationError, core.Err(shared.GenerationError, "Unknown cmd"),
+				"Error in '%v' cmd", cmd)
 		}
-		return core.Wrap(shared.GenerationError, err, "Error in '%v' cmd", cmd)
 	}
 
-	patternsLua := "{"
-	for i, p := range patterns {
-		if i > 0 {
-			patternsLua += ", "
-		}
-		patternsLua += fmt.Sprintf("%q", p)
+	quoted := make([]string, 0, len(patterns))
+	for _, p := range patterns {
+		quoted = append(quoted, fmt.Sprintf("%q", p))
 	}
-	patternsLua += "}"
 
-	res += fmt.Sprintf(`tasker.add(%v, 
+	t.Functions = append(t.Functions, fmt.Sprintf(`tasker.add({%v},
 "%v", function()
 %v
-end)`, patternsLua, ts.Name, ts.Code)
-	t.Functions = append(t.Functions, res)
+end)`, strings.Join(quoted, ", "), ts.Name, ts.Code))
 	return nil
 }

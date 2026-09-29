@@ -18,7 +18,7 @@ print("2!")
 
 -- @
 if #get_args() > 0 then
-    script(get_args()[1]) 
+    script(get_args()[1])
 end
 
 update()

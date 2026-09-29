@@ -44,7 +44,6 @@ func RemoveHandler(p *tap.Parser, s []string) error {
 			newScripts = append(newScripts, script)
 			continue
 		}
-		// drop the generated wrapper together with the config entry
 		if err := api.RemoveRunScript(script.StringV["script"]); err != nil {
 			return err
 		}
@@ -116,33 +115,34 @@ func MakeRunHandler(hasRawArgs bool) func(p *tap.Parser, s []string) error {
 			var errsMu sync.Mutex
 			var wg sync.WaitGroup
 
+			runOne := func(name string) error {
+				if err := api.RunScript(cfg, name, args); err != nil {
+					p.Print("verbose", "[?RD]Err[?YW]:[RT] %v", err)
+					return err
+				}
+				p.Print("verbose", "[?GN]Ok[?RT]")
+				return nil
+			}
+
 			for _, script := range cfg.InnerArrV["scripts"] {
-				scrTags := script.StringArrV["tags"]
-				scriptName := script.StringV["name"]
-				for _, tag := range scrTags {
-					if slices.Contains(tags, tag) {
-						p.Print("verbose", "Run %v: ", scriptName)
-						if parallel {
-							wg.Add(1)
-							go func(name string) {
-								defer wg.Done()
-								if err := api.RunScript(cfg, name, args); err != nil {
-									p.Print("verbose", "[?RD]Err[?YW]:[RT] %v", err)
-									errsMu.Lock()
-									errs = append(errs, err.Error())
-									errsMu.Unlock()
-								} else {
-									p.Print("verbose", "[?GN]Ok[?RT]")
-								}
-							}(scriptName)
-						} else {
-							if err := api.RunScript(cfg, scriptName, args); err != nil {
-								p.Print("verbose", "[?RD]Err[?YW]:[RT] %v", err)
+				for _, tag := range script.StringArrV["tags"] {
+					if !slices.Contains(tags, tag) {
+						continue
+					}
+					name := script.StringV["name"]
+					p.Print("verbose", "Run %v: ", name)
+					if parallel {
+						wg.Add(1)
+						go func() {
+							defer wg.Done()
+							if err := runOne(name); err != nil {
+								errsMu.Lock()
 								errs = append(errs, err.Error())
-							} else {
-								p.Print("verbose", "[?GN]Ok[?RT]")
+								errsMu.Unlock()
 							}
-						}
+						}()
+					} else if err := runOne(name); err != nil {
+						errs = append(errs, err.Error())
 					}
 				}
 			}
@@ -152,14 +152,14 @@ func MakeRunHandler(hasRawArgs bool) func(p *tap.Parser, s []string) error {
 				return nil
 			}
 			return errors.New(" - " + strings.Join(errs, "\n - "))
-		} else {
-			if len(s) < 1 {
-				return fmt.Errorf("Invalid argument length: need more or equals to 1")
-			}
-			name := s[0]
-			p.Print("verbose", "Run %v: ", name)
-			return api.RunScript(cfg, name, args)
 		}
+
+		if len(s) < 1 {
+			return fmt.Errorf("Invalid argument length: need more or equals to 1")
+		}
+		name := s[0]
+		p.Print("verbose", "Run %v: ", name)
+		return api.RunScript(cfg, name, args)
 	}
 }
 

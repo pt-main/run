@@ -41,8 +41,7 @@ func NewSys() *tap.Parser {
 			return fmt.Errorf("Invalid argument")
 		}
 		return nil
-	},
-		`[?GN]Set or show the current working mode (global/local).[?RT]
+	}, `[?GN]Set or show the current working mode (global/local).[?RT]
 [?BBK]Usage:[?RT]
   [?BBK]run sys localmode[?RT]           Show current mode and config path
   [?BBK]run sys localmode true[?RT]      Enable local mode (use .run/ in current directory)

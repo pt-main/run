@@ -26,10 +26,8 @@ func TemplateAdd(p *tap.Parser, s []string) (err error) {
 		return err
 	}
 	_, force := p.Flags["force"]
-	err = api.AddTemplate(cfg, s[0], template, force)
-	// fmt.Println(force, template, p.Flags, p.RawArgs, s)
-	if err != nil {
-		return
+	if err := api.AddTemplate(cfg, s[0], template, force); err != nil {
+		return err
 	}
 	return api.UpdateConfig(cfg)
 }

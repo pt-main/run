@@ -15,12 +15,10 @@ import (
 
 func downloadScript(url string) (content string, fileName string, err error) {
 	if strings.Contains(url, "github.com/") {
-		rawURL, fname, err := parseGitHubURL(url)
+		url, fileName, err = parseGitHubURL(url)
 		if err != nil {
 			return "", "", err
 		}
-		url = rawURL
-		fileName = fname
 	} else {
 		fileName = filepath.Base(url)
 		if idx := strings.Index(fileName, "?"); idx != -1 {
@@ -46,49 +44,34 @@ func downloadScript(url string) (content string, fileName string, err error) {
 }
 
 func parseGitHubURL(rawURL string) (rawContentURL string, fileName string, err error) {
+	url := strings.TrimPrefix(strings.TrimPrefix(rawURL, "https://"), "http://")
 
-	u := rawURL
-	if strings.HasPrefix(u, "https://") {
-		u = strings.TrimPrefix(u, "https://")
-	} else if strings.HasPrefix(u, "http://") {
-		u = strings.TrimPrefix(u, "http://")
-	}
-
-	if !strings.HasPrefix(u, "github.com/") {
+	if !strings.HasPrefix(url, "github.com/") {
 		return "", "", fmt.Errorf("not a GitHub URL")
 	}
-	u = strings.TrimPrefix(u, "github.com/")
+	url = strings.TrimPrefix(url, "github.com/")
 
-	parts := strings.SplitN(u, "@", 2)
-	if len(parts) == 2 {
-		repo := parts[0]
-		rest := parts[1]
-		slashIdx := strings.Index(rest, "/")
-		if slashIdx == -1 {
+	if repo, rest, found := strings.Cut(url, "@"); found {
+		ref, path, found := strings.Cut(rest, "/")
+		if !found {
 			return "", "", fmt.Errorf("missing path after ref")
 		}
-		ref := rest[:slashIdx]
-		path := rest[slashIdx+1:]
-		rawContentURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s", repo, ref, path)
-		fileName = filepath.Base(path)
-		return rawContentURL, fileName, nil
+		return rawFileURL(repo, ref, path), filepath.Base(path), nil
 	}
 
-	idx := strings.Index(u, "/blob/")
-	if idx == -1 {
+	repoPart, rest, found := strings.Cut(url, "/blob/")
+	if !found {
 		return "", "", fmt.Errorf("invalid GitHub URL: missing '@' or '/blob/'")
 	}
-	repoPart := u[:idx]
-	rest := u[idx+len("/blob/"):]
-	slashIdx := strings.Index(rest, "/")
-	if slashIdx == -1 {
+	branch, path, found := strings.Cut(rest, "/")
+	if !found {
 		return "", "", fmt.Errorf("invalid blob URL: missing branch/path")
 	}
-	branch := rest[:slashIdx]
-	path := rest[slashIdx+1:]
-	rawContentURL = fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s", repoPart, branch, path)
-	fileName = filepath.Base(path)
-	return rawContentURL, fileName, nil
+	return rawFileURL(repoPart, branch, path), filepath.Base(path), nil
+}
+
+func rawFileURL(repo, ref, path string) string {
+	return fmt.Sprintf("https://raw.githubusercontent.com/%s/%s/%s", repo, ref, path)
 }
 
 func InstallHandler(p *tap.Parser, s []string) error {
@@ -113,35 +96,30 @@ func InstallHandler(p *tap.Parser, s []string) error {
 	}
 
 	if scriptName == "" {
-		ext := filepath.Ext(rawName)
-		scriptName = strings.TrimSuffix(rawName, ext)
+		scriptName = strings.TrimSuffix(rawName, filepath.Ext(rawName))
+	}
+
+	if rawName == "run.task.lua" {
+		return runInstaller(p, s[1:], content)
 	}
 
 	_, force := p.Flags["force"]
-
-	// running tal isntallation file
-	if rawName == "run.task.lua" {
-		args := s[1:]
-		_args, hasArgs := p.Flags["args"]
-		if hasArgs {
-			args, err = shellwords.Parse(_args)
-			if err != nil {
-				return fmt.Errorf("Parsing args: %v", err)
-			}
-		}
-
-		err := tal.Process([]string{}, args, content)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
 
 	cfg, err := api.GetCfg()
 	if err != nil {
 		return err
 	}
 
-	// adding script
 	return api.Upconf(cfg, api.AddScript(cfg, content, rawName, scriptName, docs, force))
+}
+
+func runInstaller(p *tap.Parser, args []string, content string) error {
+	if scriptArgs, ok := p.Flags["args"]; ok {
+		parsed, err := shellwords.Parse(scriptArgs)
+		if err != nil {
+			return fmt.Errorf("Parsing args: %v", err)
+		}
+		args = parsed
+	}
+	return tal.Process([]string{}, args, content)
 }

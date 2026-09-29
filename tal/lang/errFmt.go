@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pt-main/lc/engine/core"
-	"github.com/pt-main/lc/parsing/stringParsing/parser3"
-	"github.com/pt-main/lc/public/errors"
+	"github.com/pt-main/lc/v2/engine/core"
+	"github.com/pt-main/lc/v2/parsing/stringParsing/parser3"
+	"github.com/pt-main/lc/v2/public/errors"
 	"github.com/pt-main/run/tal/shared"
 	"github.com/pt-main/tap/go/color"
 )
@@ -33,14 +33,10 @@ func GetRealErrorReverse(err error) string {
 	var parts []string
 	cur := err
 	for cur != nil {
-
 		if ce, ok := cur.(core.ErrorInterface); ok {
-
 			innerFormatted := ce.Format()
 			if len(parts) > 0 {
-
-				outerMsg := strings.Join(reverse(parts), ": ")
-				return outerMsg + ": " + innerFormatted
+				return strings.Join(reverse(parts), ": ") + ": " + innerFormatted
 			}
 			return innerFormatted
 		}
@@ -79,10 +75,9 @@ func GetErr(ei core.ErrorInterface) core.ErrorInterface {
 	res, ok := inner.(core.ErrorInterface)
 	if !ok {
 		res = &core.Error{
-			Code:  shared.SystemError,
-			Msg:   inner.Error(),
-			Meta:  make(map[errors.ErrorMetaType]interface{}),
-			Cause: nil,
+			Code: shared.SystemError,
+			Msg:  inner.Error(),
+			Meta: make(map[errors.ErrorMetaType]interface{}),
 		}
 	}
 	return res
@@ -109,10 +104,15 @@ func FormatError(ei core.ErrorInterface, prev core.ErrorInterface) string {
 	inner := GetErr(ei)
 	meta := ei.GetMeta()
 	code := errors.ErrorCodeType(ei.GetCode())
-	addFallback := false
-	fallbackAdded := false
+	needFallback := false
+	fallbackWritten := false
 
 	var res strings.Builder
+
+	parseFallback := func() {
+		res.WriteString(color.Set("[?YW]Parsing error:[?RT]\n"))
+		res.WriteString(addSpace(ei.GetMsg(), errSpace, 1))
+	}
 
 	switch code {
 	case shared.SystemError:
@@ -124,37 +124,29 @@ func FormatError(ei core.ErrorInterface, prev core.ErrorInterface) string {
 		res.WriteString(addSpace(ei.GetMsg(), errSpace, 1))
 
 	case errors.ParsingError, parser3.AdapterErrCode:
-		fallback := func() {
-			res.WriteString(color.Set("[?YW]Parsing error:[?RT]\n"))
-			res.WriteString(addSpace(ei.GetMsg(), errSpace, 1))
-		}
-		if inner != nil {
-			if inner.GetCode() == parser3.AdapterErrCode {
-				fallbackAdded = true
-				FormatError(inner.Unwrap().(core.ErrorInterface), ei)
-			} else {
-				fallback()
-			}
+		if inner == nil || inner.GetCode() != parser3.AdapterErrCode {
+			parseFallback()
 		} else {
-			fallback()
+			fallbackWritten = true
+			FormatError(inner.Unwrap().(core.ErrorInterface), ei)
 		}
 
 	case parser3.ParseErrCode, parser3.GrammarErrCode:
 		res.WriteString(color.Set("[?YW]Parser error (2):[?RT]\n"))
-		text := ""
+		var text string
 		switch v, _ := meta["Code"].(string); v {
 		case "UnexpectedToken":
 			expected, _ := meta["Expected"].(string)
 			got, _ := meta["Got"].(string)
 			raw, _ := meta["Raw"].(string)
-			text += fmt.Sprintf("Expected '%s', got '%s'", expected, got)
+			text = fmt.Sprintf("Expected '%s', got '%s'", expected, got)
 			if raw != "" {
 				text += "\n" + addSpace(raw, whereSpace, 1)
 			}
 		default:
 			msg := ei.GetMsg()
 			if v != "" {
-				text += v + ":"
+				text = v + ":"
 				if msg != "" {
 					text += "\n"
 				}
@@ -167,44 +159,37 @@ func FormatError(ei core.ErrorInterface, prev core.ErrorInterface) string {
 			res.WriteString(addSpace(text, errSpace, 1))
 		}
 	default:
-		addFallback = true
+		needFallback = true
 	}
 
 	fallback := func() {
-		// Generic fallback
-		if !addFallback {
+		if !needFallback {
 			return
 		}
-		result := res.String()
-		if len(result) > 0 && result[len(result)-1] != '\n' {
+		if out := res.String(); out != "" && !strings.HasSuffix(out, "\n") {
 			res.WriteRune('\n')
 		}
 		res.WriteString(color.Set("[?BYW]Error:[?YW] " + ei.GetCode() + "[?RT]"))
-		msg := ei.GetMsg()
-		if msg != "" {
+		if msg := ei.GetMsg(); msg != "" {
 			res.WriteRune('\n')
 			res.WriteString(addSpace(msg, errSpace, 1))
 		}
 	}
 
-	if ei.GetCode() == "RepeatExpr" && prev != nil {
-		if prev.GetCode() == "NodeExpr" && prev.GetMsg() == "building node 'file'" &&
-			ei.GetMsg() == "expected at least 1 repetition(s), got 0 at idx=0 start=0-1" {
-			// while parser in node file and repeats of blocks is not found
-			res.WriteString("Do you forget to add block annotation?")
-		} else {
-			fallback()
-		}
+	missingBlockAnnotation := ei.GetCode() == "RepeatExpr" && prev != nil &&
+		prev.GetCode() == "NodeExpr" && prev.GetMsg() == "building node 'file'" &&
+		ei.GetMsg() == "expected at least 1 repetition(s), got 0 at idx=0 start=0-1"
+	if missingBlockAnnotation {
+		res.WriteString("Do you forget to add block annotation?")
 	} else {
 		fallback()
 	}
 
 	if inner != nil {
-		if !fallbackAdded {
+		if !fallbackWritten {
 			res.WriteString("\n")
 		}
-		result := FormatError(inner, ei)
-		res.WriteString(addSpace(result, whereRedSpace, 1))
+		res.WriteString(addSpace(FormatError(inner, ei), whereRedSpace, 1))
 	}
 
 	return res.String()

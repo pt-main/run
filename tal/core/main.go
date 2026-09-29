@@ -33,13 +33,10 @@ func FileHash(path string) ([]byte, error) {
 	return h.Sum(nil), nil
 }
 
-// SaveState walks through the directory `where` recursively,
-// computes SHA256 hash for each file, and returns an ordered map
-// where key = absolute file path, value = hex-encoded hash.
-//
-// Uses parallel workers and streaming reads for better performance.
+// SaveState hashes every regular file under the directory `where` and returns
+// an ordered map of absolute path to hash, hashing files in parallel.
 func SaveState(where string) (*orderedmap.OrderedMap, error) {
-	const maxWorkers = 32 // can be adjusted or set to runtime.NumCPU()
+	const maxWorkers = 32
 
 	abs, err := filepath.Abs(where)
 	if err != nil {
@@ -105,7 +102,7 @@ func SaveState(where string) (*orderedmap.OrderedMap, error) {
 		entries = append(entries, r)
 	}
 
-	// Sort for deterministic order in orderedmap
+	// sort for a deterministic order in the returned map
 	sort.Slice(entries, func(i, j int) bool {
 		return entries[i].path < entries[j].path
 	})
@@ -117,25 +114,23 @@ func SaveState(where string) (*orderedmap.OrderedMap, error) {
 	return om, nil
 }
 
-// Changes compares a previous state (was) with the current state of the directory `where`.
-// It returns a list of absolute file paths that are either new or modified.
-// The comparison is based on SHA256 hashes.
+// Changes returns the files under `where` that are new or whose hash differs
+// from the previously saved state `was`.
 func Changes(was *orderedmap.OrderedMap, where string) ([]string, error) {
 	now, err := SaveState(where)
 	if err != nil {
 		return nil, err
 	}
 
-	// Build a map for O(1) lookup of old hashes
-	wasMap := make(map[string][]byte, len(was.Keys()))
+	oldHashes := make(map[string][]byte, len(was.Keys()))
 	for _, k := range was.Keys() {
 		v, _ := was.Get(k)
-		wasMap[k] = v.([]byte)
+		oldHashes[k] = v.([]byte)
 	}
 
 	var res []string
 	for _, k := range now.Keys() {
-		oldHash, exists := wasMap[k]
+		oldHash, exists := oldHashes[k]
 		if !exists {
 			res = append(res, k)
 			continue
@@ -202,12 +197,10 @@ func Write(filename string, data []byte) error {
 	defer file.Close()
 
 	writer := bufio.NewWriter(file)
-	_, err = writer.Write(data)
-	if err != nil {
+	if _, err := writer.Write(data); err != nil {
 		return fmt.Errorf("Write: %v", err)
 	}
-	err = writer.Flush()
-	if err != nil {
+	if err := writer.Flush(); err != nil {
 		return fmt.Errorf("Write: %v", err)
 	}
 	return nil

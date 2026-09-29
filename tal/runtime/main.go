@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/iancoleman/orderedmap"
-	lccore "github.com/pt-main/lc/engine/core"
 	"github.com/pt-main/run/tal"
 	"github.com/pt-main/run/tal/core"
 	"github.com/pt-main/run/tal/lang"
@@ -81,7 +80,7 @@ func InitHandler(p *tap.Parser, s []string) error {
 	color.PrintlnColored("Update err: %v", core.Update())
 	color.PrintlnColored("File creating err: %v", core.Write("main.task.lua", []byte(`-- @
 if #get_args() > 0 then
-    script(get_args()[1]) 
+    script(get_args()[1])
 end`)))
 	return nil
 }
@@ -103,25 +102,24 @@ func ListHandler(p *tap.Parser, s []string) error {
 		if err != nil {
 			return err
 		}
-		var err_ lccore.ErrorInterface
-		parsed, err_ := lang.Process(file)
-		if err_ != nil {
-			return errors.New(lang.ErrFmt(err_))
+		parsed, parseErr := lang.Process(file)
+		if parseErr != nil {
+			return errors.New(lang.ErrFmt(parseErr))
 		}
 		res := []string{"[?GN]╭─────── [?RT][[?YW]" +
 			center(fileName, 20) + "[?RT]] Scripts"}
-		templ := "[?GN]│  [?RT]%3d: [?BGN]%v"
+		row := "[?GN]│  [?RT]%3d: [?BGN]%v"
 		idx := 0
 		if parsed.Global != nil {
-			idx += 1
-			res = append(res, fmt.Sprintf(templ, idx, "Global"))
+			idx++
+			res = append(res, fmt.Sprintf(row, idx, "Global"))
 		}
-		for script := range parsed.Blocks {
-			res = append(res, fmt.Sprintf(templ, idx, script))
-			idx += 1
+		for task := range parsed.Blocks {
+			res = append(res, fmt.Sprintf(row, idx, task))
+			idx++
 		}
 		if parsed.Main != nil {
-			res = append(res, fmt.Sprintf(templ, idx, "Main"))
+			res = append(res, fmt.Sprintf(row, idx, "Main"))
 		}
 		res = append(res, "[?GN]╰───────[?RT]")
 		color.PrintlnColored("%s", strings.Join(res, "\n"))
@@ -134,31 +132,30 @@ func UpdateHandler(p *tap.Parser, s []string) error {
 }
 
 func RunHandler(p *tap.Parser, s []string) (err error) {
-	ch := []string{}
-	if deps, hasDeps := p.Flags["deps"]; hasDeps {
-		ch = strings.Split(deps, ";")
-	} else {
-		ch, err = GetChanges()
+	var changed []string
+	if deps, ok := p.Flags["deps"]; ok {
+		changed = strings.Split(deps, ";")
+	} else if changed, err = GetChanges(); err != nil {
+		// no .tal.pack yet: treat every file as changed so the first run
+		// is not a no-op
+		changed, err = allChangedFiles()
 		if err != nil {
-			// No .tal.pack yet: report every file as changed so that tasks
-			// without --#depends still run and the first run is not a no-op.
-			ch, err = allChangedFiles()
-			if err != nil {
-				return
-			}
+			return err
 		}
 	}
+
 	args := []string{}
-	skippedName := false
+	nameSkipped := false
 	for _, arg := range p.RawArgs[1:] {
-		if arg == s[0] && !skippedName {
-			skippedName = true
-		} else {
-			args = append(args, arg)
+		if arg == s[0] && !nameSkipped {
+			nameSkipped = true
+			continue
 		}
+		args = append(args, arg)
 	}
-	file, err := core.OpenF(s[0])
-	return tal.Process(ch, args, file)
+
+	file, _ := core.OpenF(s[0])
+	return tal.Process(changed, args, file)
 }
 
 func GetSavedFile() (*orderedmap.OrderedMap, error) {
@@ -184,7 +181,5 @@ func allChangedFiles() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	res := make([]string, 0, len(state.Keys()))
-	res = append(res, state.Keys()...)
-	return res, nil
+	return state.Keys(), nil
 }

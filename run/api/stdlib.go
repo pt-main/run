@@ -1,9 +1,9 @@
 package api
 
-import (
-	"github.com/pt-main/tycl/shared"
-)
+import "github.com/pt-main/tycl/shared"
 
+// StdLib returns the config created on first launch: a single demo script and
+// an empty template list.
 func StdLib() (string, error) {
 	config := shared.NewNilConfig()
 	NewRunScript("test", `print("test script"); print(script_path("test.py")); print(get_args()[1])`)

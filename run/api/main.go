@@ -7,7 +7,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/pt-main/lc/engine/core"
 	"github.com/pt-main/tycl"
 	"github.com/pt-main/tycl/format"
 	"github.com/pt-main/tycl/shared"
@@ -15,8 +14,9 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
-// LegacyTyclContract is the old contract where templates were stored inline
-// in the config. It is only used to detect and migrate old configs.
+// LegacyTyclContract is the contract of configs written before template bodies
+// were moved out of the config into the templates dir. It is only used to
+// detect such configs and migrate them.
 const LegacyTyclContract = `
 flexible {
 	scripts: objects = flexible {
@@ -33,40 +33,31 @@ flexible {
 }
 `
 
-// MigrateTemplates moves inline templates (old `template` field) into the
-// templates dir and replaces them with a `file` reference. Returns true when
-// the config has been changed.
+// MigrateTemplates moves inline template bodies (the `template` field) into the
+// templates dir and replaces them with a `file` reference. It reports whether
+// the config was changed.
 func MigrateTemplates(cfg *shared.Config) (bool, error) {
-	if _, ok := cfg.InnerArrV["templates"]; !ok {
+	templates, ok := cfg.InnerArrV["templates"]
+	if !ok {
 		return false, nil
 	}
 	changed := false
-	templates := []*shared.Config{}
-	for _, templ := range cfg.InnerArrV["templates"] {
+	for _, templ := range templates {
 		content, has := templ.StringV["template"]
 		if !has {
-			templates = append(templates, templ)
 			continue
 		}
-		ext := templ.StringV["ext"]
-		file, hasFile := templ.StringV["file"]
-		if hasFile && file != "" {
-			// already migrated, drop the legacy field
-			delete(templ.StringV, "template")
-			templates = append(templates, templ)
-			changed = true
-			continue
-		}
-		file = TemplateFileName(ext)
-		if err := WriteTemplateFile(file, content); err != nil {
-			return changed, err
+		file := templ.StringV["file"]
+		if file == "" {
+			file = TemplateFileName(templ.StringV["ext"])
+			if err := WriteTemplateFile(file, content); err != nil {
+				return changed, err
+			}
+			templ.StringV["file"] = file
 		}
 		delete(templ.StringV, "template")
-		templ.StringV["file"] = file
-		templates = append(templates, templ)
 		changed = true
 	}
-	cfg.InnerArrV["templates"] = templates
 	return changed, nil
 }
 
@@ -75,11 +66,9 @@ func GetCfg() (*shared.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	var errI core.ErrorInterface
 	cfg, errI := tycl.Process(file, TyclContract, true)
 	if errI != nil {
-		// old configs keep template contents inline, try to migrate them
-		var legacyErrI core.ErrorInterface
+		// a config that still keeps template bodies inline
 		legacyCfg, legacyErrI := tycl.Process(file, LegacyTyclContract, true)
 		if legacyErrI != nil {
 			return cfg, errors.New(format.FormatError(errI))
@@ -98,8 +87,7 @@ func GetCfg() (*shared.Config, error) {
 	}
 	if _, ok := cfg.InnerArrV["templates"]; !ok {
 		cfg.InnerArrV["templates"] = []*shared.Config{}
-		err = UpdateConfig(cfg)
-		if err != nil {
+		if err := UpdateConfig(cfg); err != nil {
 			return nil, err
 		}
 	}
@@ -111,112 +99,110 @@ func AddScript(conf *shared.Config, script, rawScriptName, scriptName, docs stri
 
 	runScript := ""
 
-	newScripts := []*shared.Config{}
-	for _, script := range conf.InnerArrV["scripts"] {
-		name := script.StringV["script"]
+	kept := []*shared.Config{}
+	for _, existing := range conf.InnerArrV["scripts"] {
+		name := existing.StringV["script"]
 		if name == scriptName && !force {
 			return fmt.Errorf("Can't add script: script already added. Use --force to replace script.")
 		}
 		if name != scriptName {
-			newScripts = append(newScripts, script)
+			kept = append(kept, existing)
 		}
 	}
-	conf.InnerArrV["scripts"] = newScripts
-	addScript := true
-
-	processed := false
+	conf.InnerArrV["scripts"] = kept
+	storeBase := true
+	matched := false
 	ext := filepath.Ext(rawScriptName)
 
 	if strings.HasSuffix(rawScriptName, ".nd.task.lua") { // nd - no deps
-		processed = true
+		matched = true
 		ext = ".nd.task.lua"
 		runScript = TalRunScriptTemplate(rawScriptName)
 	} else if strings.HasSuffix(rawScriptName, ".task.lua") {
-		processed = true
+		matched = true
 		ext = ".task.lua"
 		runScript = TalRunScriptTemplate(rawScriptName)
 	}
 
-	var fallbackFile *string
+	var fallbackFile string
 
-	parseTempl := func(templ string) error {
+	render := func(templ string) error {
 		tpl, err := template.New(ext).Parse(templ)
 		if err != nil {
 			return fmt.Errorf("Add script: parsing extension template: %v", err)
 		}
 		var b strings.Builder
-		err = tpl.Execute(&b, map[string]string{"ext": ext, "name": rawScriptName})
-		if err != nil {
+		if err := tpl.Execute(&b, map[string]string{"ext": ext, "name": rawScriptName}); err != nil {
 			return fmt.Errorf("Add script: executing extension template: %v", err)
 		}
 		runScript = b.String()
 		return nil
 	}
 
-	if !processed {
-		templs := conf.InnerArrV["templates"]
-		for _, cfg := range templs {
-			ext := cfg.StringV["ext"]
-			file := cfg.StringV["file"]
+	if !matched {
+		for _, tmpl := range conf.InnerArrV["templates"] {
+			tmplExt := tmpl.StringV["ext"]
+			file := tmpl.StringV["file"]
 
-			if ext == "" {
+			if tmplExt == "" {
 				if file != "" {
-					f := file
-					fallbackFile = &f
+					fallbackFile = file
 				}
+				continue
 			}
 
-			if strings.HasSuffix(rawScriptName, ext) && ext != "" {
+			if strings.HasSuffix(rawScriptName, tmplExt) {
 				templ, err := ReadTemplateFile(file)
 				if err != nil {
 					return err
 				}
-				if err := parseTempl(templ); err != nil {
+				if err := render(templ); err != nil {
 					return err
 				}
-				processed = true
+				matched = true
 			}
 		}
 	}
 
-	if fallbackFile != nil && !processed {
-		templ, err := ReadTemplateFile(*fallbackFile)
+	if !matched && fallbackFile != "" {
+		templ, err := ReadTemplateFile(fallbackFile)
 		if err != nil {
 			return err
 		}
-		if err := parseTempl(templ); err != nil {
+		if err := render(templ); err != nil {
 			return err
 		}
-		processed = true
+		matched = true
 	}
 
-	if !processed {
+	if !matched {
 		switch ext {
 		case ".py":
-			processed = true
+			matched = true
 			runScript = PythonRunScriptTemplate(rawScriptName)
 		case ".sh":
-			processed = true
+			matched = true
 			runScript = BashRunScriptTemplate(rawScriptName)
 		case ".bat":
-			processed = true
+			matched = true
 			runScript = BatRunScriptTemplate(rawScriptName)
 		case ".lua":
-			processed = true
+			matched = true
 			runScript = script
-			addScript = false
+			storeBase = false
 		}
 	}
-	if !processed {
+	if !matched {
 		return fmt.Errorf("Unsupportable file extension: %v", ext)
 	}
-	conf.InnerArrV["scripts"] = append(conf.InnerArrV["scripts"], NewScriptConfig(scriptName, scriptName, docs, ext, nil))
+
+	conf.InnerArrV["scripts"] = append(conf.InnerArrV["scripts"],
+		NewScriptConfig(scriptName, scriptName, docs, ext, nil))
 	if err := NewRunScript(scriptName, runScript); err != nil {
 		return err
 	}
-	if addScript {
-		fpsplit := strings.Split(rawScriptName, "/")
-		file := fpsplit[0]
+	if storeBase {
+		file, _, _ := strings.Cut(rawScriptName, "/")
 		if err := NewScript(file, script); err != nil {
 			return err
 		}
@@ -225,15 +211,15 @@ func AddScript(conf *shared.Config, script, rawScriptName, scriptName, docs stri
 }
 
 func AddTemplate(conf *shared.Config, ext, template string, force bool) error {
-	templates := conf.InnerArrV["templates"]
-	templatesA := []*shared.Config{}
-	for _, templ := range templates {
-		tExt := templ.StringV["ext"]
-		if tExt == ext && !force {
-			return fmt.Errorf("Can't add template: extension duplicate and has no force flag")
-		} else if tExt != ext {
-			templatesA = append(templatesA, templ)
+	kept := []*shared.Config{}
+	for _, tmpl := range conf.InnerArrV["templates"] {
+		if tmplExt := tmpl.StringV["ext"]; tmplExt == ext {
+			if !force {
+				return fmt.Errorf("Can't add template: extension duplicate and has no force flag")
+			}
+			continue
 		}
+		kept = append(kept, tmpl)
 	}
 	file := TemplateFileName(ext)
 	if err := WriteTemplateFile(file, template); err != nil {
@@ -242,25 +228,22 @@ func AddTemplate(conf *shared.Config, ext, template string, force bool) error {
 	c := shared.NewNilConfig()
 	c.StringV["ext"] = ext
 	c.StringV["file"] = file
-	templatesA = append(templatesA, c)
-	conf.InnerArrV["templates"] = templatesA
+	conf.InnerArrV["templates"] = append(kept, c)
 	return nil
 }
 
 func RemoveTemplate(conf *shared.Config, ext string) error {
-	templates := conf.InnerArrV["templates"]
-	templatesA := []*shared.Config{}
-	for _, templ := range templates {
-		tExt := templ.StringV["ext"]
-		if tExt == ext {
-			if err := RemoveTemplateFile(templ.StringV["file"]); err != nil {
+	kept := []*shared.Config{}
+	for _, tmpl := range conf.InnerArrV["templates"] {
+		if tmpl.StringV["ext"] == ext {
+			if err := RemoveTemplateFile(tmpl.StringV["file"]); err != nil {
 				return err
 			}
 			continue
 		}
-		templatesA = append(templatesA, templ)
+		kept = append(kept, tmpl)
 	}
-	conf.InnerArrV["templates"] = templatesA
+	conf.InnerArrV["templates"] = kept
 	return nil
 }
 
@@ -272,19 +255,17 @@ func RemoveTemplate(conf *shared.Config, ext string) error {
 // osTableWithExit replaces os.exit with a recorded code, so the wrapper returns
 // normally and the caller decides what to do with the exit code.
 func RunScript(cfg *shared.Config, name string, rArgs []string) error {
-	var scriptPath string
+	var scriptName string
 	for _, script := range cfg.InnerArrV["scripts"] {
-		scriptName := script.StringV["name"]
-		scriptPath_ := script.StringV["script"]
-		if scriptName == name {
-			scriptPath = scriptPath_
+		if script.StringV["name"] == name {
+			scriptName = script.StringV["script"]
 			break
 		}
 	}
-	if scriptPath == "" {
+	if scriptName == "" {
 		return fmt.Errorf("Script is not found")
 	}
-	file, err := utils.OpenF(filepath.Join(ConfigDirScriptsPath(), scriptPath+".lua"))
+	file, err := utils.OpenF(filepath.Join(ConfigDirScriptsPath(), scriptName+".lua"))
 	if err != nil {
 		return err
 	}
@@ -318,12 +299,11 @@ func osTableWithExit(L *lua.LState, code *int) *lua.LTable {
 	return res
 }
 
+// Upconf writes the config back to disk unless err is set, so a handler can
+// pass the result of a mutating call directly.
 func Upconf(conf *shared.Config, err error) error {
 	if err != nil {
 		return err
 	}
-	if err := UpdateConfig(conf); err != nil {
-		return err
-	}
-	return nil
+	return UpdateConfig(conf)
 }

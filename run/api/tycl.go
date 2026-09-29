@@ -1,5 +1,6 @@
 package api
 
+// TyclContract describes the config written to ~/run/config.tycl.
 var TyclContract = `
 flexible {
 	scripts: objects = strict {

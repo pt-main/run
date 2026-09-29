@@ -1,5 +1,7 @@
 package lang
 
+// TalSection is a single block of a task file: its name, its `-- #cmd` lines
+// and its Lua body.
 type TalSection struct {
 	Cmds map[string]string
 	Code string
@@ -7,13 +9,11 @@ type TalSection struct {
 }
 
 func NewTalSection() *TalSection {
-	return &TalSection{
-		Cmds: make(map[string]string),
-		Code: "",
-		Name: "",
-	}
+	return &TalSection{Cmds: make(map[string]string)}
 }
 
+// TalCode is a parsed task file: its global and main blocks plus every named
+// task.
 type TalCode struct {
 	Global *TalSection
 	Main   *TalSection
@@ -21,9 +21,5 @@ type TalCode struct {
 }
 
 func NewTalCode() *TalCode {
-	return &TalCode{
-		Global: nil,
-		Main:   nil,
-		Blocks: make(map[string]*TalSection),
-	}
+	return &TalCode{Blocks: make(map[string]*TalSection)}
 }

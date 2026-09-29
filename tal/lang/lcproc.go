@@ -2,8 +2,8 @@ package lang
 
 import (
 	"github.com/dlclark/regexp2"
-	"github.com/pt-main/lc/parsing/stringParsing"
-	"github.com/pt-main/lc/parsing/stringParsing/parser3"
+	"github.com/pt-main/lc/v2/parsing/stringParsing"
+	"github.com/pt-main/lc/v2/parsing/stringParsing/parser3"
 )
 
 func NewLexer() *stringParsing.Lexer {
@@ -11,6 +11,15 @@ func NewLexer() *stringParsing.Lexer {
 		{
 			Type:    "CODE",
 			Pattern: regexp2.MustCompile(`"([^"\\]|\\.)*"`, 0),
+		},
+		{
+			// lc/v2 matches rules against the whole rune slice anchored at the
+			// current position, so "^" is a real line start again and no longer
+			// swallows the newline in front of a "-- #cmd" annotation. Emitting
+			// newlines as their own token type keeps the previous token stream,
+			// and the parser skips them as ignorable.
+			Type:    "WHITESPACE",
+			Pattern: regexp2.MustCompile(`\n+`, 0),
 		},
 		{
 			Type:    "COMMAND",
@@ -106,6 +115,6 @@ func NewParser() *parser3.Adapter {
 				},
 			},
 		},
-	}, "file", nil)
+	}, "file", []string{"WHITESPACE"})
 	return &parser3.Adapter{Parser: p}
 }

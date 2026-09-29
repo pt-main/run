@@ -1,10 +1,10 @@
 package lang
 
 import (
-	"github.com/pt-main/lc/engine/core"
-	"github.com/pt-main/lc/parsing/stringParsing"
-	"github.com/pt-main/lc/public/errors"
-	"github.com/pt-main/lc/tooling/astools"
+	"github.com/pt-main/lc/v2/engine/core"
+	"github.com/pt-main/lc/v2/parsing/stringParsing"
+	"github.com/pt-main/lc/v2/public/errors"
+	"github.com/pt-main/lc/v2/tooling/astools"
 )
 
 const (
@@ -22,32 +22,31 @@ func Process(code string) (*TalCode, core.ErrorInterface) {
 }
 
 func ProcessTalLang(pn []stringParsing.ParsedNode) (*TalCode, core.ErrorInterface) {
-	c := NewTalCode()
+	code := NewTalCode()
 	for _, node := range astools.GetChildren(&pn[0]) {
-		chs := astools.GetChildren(&node)
-		sec := NewTalSection()
-		for _, ch := range chs {
-			switch ch.Switch {
+		section := NewTalSection()
+		for _, child := range astools.GetChildren(&node) {
+			switch child.Switch {
 			case "code":
-				sec.Code += ch.Raw
+				section.Code += child.Raw
 			case "GLOBALBLOCK", "MAINBLOCK":
-				sec.Name = "__SYSBLOCK_" + ch.Switch
+				section.Name = "__SYSBLOCK_" + child.Switch
 			case "BLOCK":
-				sec.Name = ch.Metadata["name"].(string)
+				section.Name = child.Metadata["name"].(string)
 			case "COMMAND":
-				sec.Cmds[ch.Metadata["cmd"].(string)] = ch.Metadata["args"].(string)
+				section.Cmds[child.Metadata["cmd"].(string)] = child.Metadata["args"].(string)
 			default:
-				return nil, core.Err(errors.ParsingError, "Unknown: %v", ch.Switch)
+				return nil, core.Err(errors.ParsingError, "Unknown: %v", child.Switch)
 			}
 		}
-		switch sec.Name {
+		switch section.Name {
 		case SysGlobal:
-			c.Global = sec
+			code.Global = section
 		case SysMain:
-			c.Main = sec
+			code.Main = section
 		default:
-			c.Blocks[sec.Name] = sec
+			code.Blocks[section.Name] = section
 		}
 	}
-	return c, nil
+	return code, nil
 }

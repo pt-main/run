@@ -13,7 +13,7 @@ import (
 )
 
 func NewCli() (*tap.Parser, error) {
-	var lp *tap.Parser
+	var nested *tap.Parser
 	conf := tap.DefaultParserConfig()
 	conf.BuiltinVerboseDebug = true
 	p := tap.NewParser("run", `[?BE]╭─────── [?BRD]Run[?RT]
@@ -51,15 +51,15 @@ func NewCli() (*tap.Parser, error) {
   [?BBK]run mypy arg1 arg2[?RT]`,
 		nil, nil, true)
 
-	m, err := NewManage()
+	manage, err := NewManage()
 	if err != nil {
 		return nil, err
 	}
-	p.AddSubcommand("manage", m)
+	p.AddSubcommand("manage", manage)
 
 	p.AddSubcommand("sys", NewSys())
 
-	runcli := func(L *lua.LState) int {
+	runCli := func(L *lua.LState) int {
 		input := L.OptString(1, "")
 		if input == "" {
 			L.Push(lua.LString("missing command string"))
@@ -71,14 +71,14 @@ func NewCli() (*tap.Parser, error) {
 			L.Push(lua.LString(err.Error()))
 			return 2
 		}
-		if lp == nil {
-			lp, err = NewCli()
+		if nested == nil {
+			nested, err = NewCli()
 			if err != nil {
 				L.Push(lua.LString(err.Error()))
 				return 2
 			}
 		}
-		if err := Process(lp, parsed); err != nil {
+		if err := Process(nested, parsed); err != nil {
 			fmt.Println("Run cli err:", err)
 			L.Push(lua.LString(err.Error()))
 			return 2
@@ -87,10 +87,10 @@ func NewCli() (*tap.Parser, error) {
 	}
 
 	luaruntime.RegisterLuaFunc("run_cli", func(changedFiles, args []string) lua.LGFunction {
-		return runcli
+		return runCli
 	})
 
-	api.RegisterLuaFunc("run_cli", runcli)
+	api.RegisterLuaFunc("run_cli", runCli)
 
 	return p, nil
 }

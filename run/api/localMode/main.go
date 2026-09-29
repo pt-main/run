@@ -9,19 +9,15 @@ import (
 )
 
 func ConfigLocalmodePath() string {
-	p, err := os.UserHomeDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
 		panic(err)
 	}
-	return filepath.Join(p, "run.localmode")
+	return filepath.Join(home, "run.localmode")
 }
 
 func CheckConfigLocalmode() bool {
-	_, err := os.Stat(ConfigLocalmodePath())
-	if os.IsNotExist(err) {
-		return false
-	}
-	if err != nil {
+	if _, err := os.Stat(ConfigLocalmodePath()); err != nil {
 		return false
 	}
 	return true

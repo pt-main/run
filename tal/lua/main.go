@@ -10,29 +10,29 @@ import (
 	lua "github.com/yuin/gopher-lua"
 )
 
+// LuaFuncBuilder builds a Lua function bound to the current tal invocation.
 type LuaFuncBuilder func(changedFiles, args []string) lua.LGFunction
 
 var GlobalFuncs = map[string]LuaFuncBuilder{}
 
 func NewTalLuaState(changedFiles, args []string) *lua.LState {
 	L := lua.NewState()
-	L.SetGlobal("changed", L.NewFunction(func(L *lua.LState) int {
-		relPaths := makeRelativePaths(changedFiles)
+
+	stringTable := func(values []string) *lua.LTable {
 		tbl := L.NewTable()
-		for i, p := range relPaths {
-			tbl.RawSetInt(i+1, lua.LString(p))
+		for i, v := range values {
+			tbl.RawSetInt(i+1, lua.LString(v))
 		}
-		L.Push(tbl)
+		return tbl
+	}
+
+	L.SetGlobal("changed", L.NewFunction(func(L *lua.LState) int {
+		L.Push(stringTable(makeRelativePaths(changedFiles)))
 		return 1
 	}))
 
 	L.SetGlobal("get_args", L.NewFunction(func(L *lua.LState) int {
-		relPaths := makeRelativePaths(args)
-		tbl := L.NewTable()
-		for i, p := range relPaths {
-			tbl.RawSetInt(i+1, lua.LString(p))
-		}
-		L.Push(tbl)
+		L.Push(stringTable(makeRelativePaths(args)))
 		return 1
 	}))
 

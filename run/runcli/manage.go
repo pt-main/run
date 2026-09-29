@@ -5,7 +5,7 @@ import (
 	tap "github.com/pt-main/tap/go"
 )
 
-func NewManage() (p *tap.Parser, err error) {
+func NewManage() (*tap.Parser, error) {
 	manageP := tap.NewParser("manage", "[?GN]Manage run data.[?RT]", []string{"help", "-help", "-h"}, tap.DefaultParserConfig())
 
 	manageP.AddCommand("script-add", runlib.AddHandler,
@@ -19,8 +19,8 @@ func NewManage() (p *tap.Parser, err error) {
   [?BBK]run manage script-add ./deploy.py deploy "Deploy script"[?RT]
   [?BBK]run manage scradd ./build.sh build --force[?RT]`,
 		[]string{"path", "name"}, []string{"description"}, false)
-	if err = manageP.AddAlias("scradd", "script-add"); err != nil {
-		return
+	if err := manageP.AddAlias("scradd", "script-add"); err != nil {
+		return nil, err
 	}
 
 	manageP.AddCommand("script-remove", runlib.RemoveHandler,
@@ -30,8 +30,8 @@ func NewManage() (p *tap.Parser, err error) {
 [?YW]Example:[?RT]
   [?BBK]run manage script-remove myscript[?RT]`,
 		[]string{"name"}, nil, false)
-	if err = manageP.AddAlias("screm", "script-remove"); err != nil {
-		return
+	if err := manageP.AddAlias("screm", "script-remove"); err != nil {
+		return nil, err
 	}
 
 	manageP.AddCommand("templ-add", runlib.TemplateAdd,
@@ -48,8 +48,8 @@ func NewManage() (p *tap.Parser, err error) {
 [?YW]Note:[?RT]
   [?BBK]Template body is saved to the templates/ dir, the config only keeps the file reference.[?RT]`,
 		[]string{"ext"}, []string{"file"}, false)
-	if err = manageP.AddAlias("tladd", "templ-add"); err != nil {
-		return
+	if err := manageP.AddAlias("tladd", "templ-add"); err != nil {
+		return nil, err
 	}
 
 	manageP.AddCommand("templ-remove", runlib.TemplateRem,
@@ -61,8 +61,8 @@ func NewManage() (p *tap.Parser, err error) {
 [?YW]Note:[?RT]
   [?BBK]The template file in the templates/ dir is removed too.[?RT]`,
 		[]string{"ext"}, nil, false)
-	if err = manageP.AddAlias("tlrem", "templ-remove"); err != nil {
-		return
+	if err := manageP.AddAlias("tlrem", "templ-remove"); err != nil {
+		return nil, err
 	}
 
 	manageP.AddCommand("tag",
